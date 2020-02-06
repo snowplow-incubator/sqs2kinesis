@@ -1,26 +1,34 @@
+/*
+ * Copyright (c) 2020-2020 Snowplow Analytics Ltd. All rights reserved.
+ *
+ * This program is licensed to you under the Apache License Version 2.0,
+ * and you may not use this file except in compliance with the Apache License Version 2.0.
+ * You may obtain a copy of the Apache License Version 2.0 at http://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the Apache License Version 2.0 is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
+ */
+
 lazy val root = project
   .in(file("."))
-  .settings(
-    name := "sqs2kinesis",
-    version := "0.1.0-rc1",
-    organization := "com.snowplowanalytics",
-    scalaVersion := "2.13.1",
-    initialCommands := "import com.snowplowanalytics.sqs2kinesis._"
-  )
-  .settings(BuildSettings.assemblySettings)
+  .enablePlugins(JavaAppPackaging, DockerPlugin)
+  .settings(BuildSettings.projectSettings)
   .settings(BuildSettings.compilerSettings)
-  .enablePlugins(BuildInfoPlugin)
+  .settings(BuildSettings.resolverSettings)
+  .settings(BuildSettings.dockerSettings)
   .settings(
-    buildInfoKeys := Seq[BuildInfoKey](organization, name, version),
-    buildInfoPackage := "com.snowplowanalytics.sqs2kinesis.generated"
-  )
-  .settings(
-    resolvers ++= Seq(
-      "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
-    ),
     libraryDependencies ++= Seq(
-      Dependencies.specs2,
-      Dependencies.scalaCheck
+      Dependencies.awsSqsSdk,
+      Dependencies.awsKinesisSdk,
+      Dependencies.akkaStream,
+      Dependencies.alpakkaSqs,
+      Dependencies.alpakkaKinesis,
+      Dependencies.scalaLogging,
+      Dependencies.config,
+      Dependencies.cbor,
+      Dependencies.logback,
+      Dependencies.specs2
     )
   )
-  .settings(BuildSettings.helpersSettings)
