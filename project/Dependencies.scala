@@ -14,11 +14,24 @@ import sbt._
 
 object Dependencies {
 
-  object V {  
-    val specs2           = "4.7.0"
-    val scalaCheck       = "1.14.0"
+  object V {
+    val awsSdk       = "1.11.714"
+    val alpakka      = "1.1.2"
+    val akka         = "2.6.3"
+    val scalaLogging = "3.9.2"
+    val config       = "1.4.0"
+    val logback      = "1.2.3"
+    val specs2       = "4.7.0"
+    val scalaCheck   = "1.14.0"
   }
 
-  val specs2           = "org.specs2"            %% "specs2-core"                  % V.specs2        % Test
-  val scalaCheck       = "org.scalacheck"        %% "scalacheck"                   % V.scalaCheck    % Test
+  val awsSdk         = "com.amazonaws"              %% "aws-java-sdk"                % V.awsSdk
+  val akkaStream     = "com.typesafe.akka"          %% "akka-stream"                 % V.akka
+  val alpakkaSqs     = "com.lightbend.akka"         %% "akka-stream-alpakka-sqs"     % V.alpakka
+  val alpakkaKinesis = "com.lightbend.akka"         %% "akka-stream-alpakka-kinesis" % V.alpakka
+  val scalaLogging   = "com.typesafe.scala-logging" %% "scala-logging"               % V.scalaLogging
+  val config         = "com.typesafe"               % "config"                       % V.config
+  val logback        = "ch.qos.logback"             % "logback-classic"              % V.logback % Runtime
+  val specs2         = "org.specs2"                 %% "specs2-core"                 % V.specs2 % Test
+  val scalaCheck     = "org.scalacheck"             %% "scalacheck"                  % V.scalaCheck % Test
 }
