@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2020-2020 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -13,14 +13,29 @@
 
 package com.snowplowanalytics.sqs2kinesis
 
-import org.specs2.mutable.Specification
+import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.server.Directives._
+import com.typesafe.scalalogging.Logger
 
-class CheckSpec extends Specification {
-  "Numbers" should {
-    "add up" >> {
-      val result = 1 + 1
-      val expected = 2
-      result must beEqualTo(expected)
-    }
+object HttpModule {
+
+  val logger = Logger[HttpModule.type]
+
+  def runHttpServer(host: String, port: Int)(implicit system: ActorSystem) = {
+
+    implicit val executionContext = system.dispatcher
+
+    val route =
+      path("health") {
+        get {
+          complete(HttpResponse(StatusCodes.OK))
+        }
+      }
+
+    Http().bindAndHandle(route, host, port)
+    logger.info(s"Server online at http://$host:$port")
   }
+
 }

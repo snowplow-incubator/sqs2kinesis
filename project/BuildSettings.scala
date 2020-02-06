@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2020-2020 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -14,10 +14,26 @@
 import sbt._
 import Keys._
 
-import sbtassembly._
-import sbtassembly.AssemblyKeys._
+import com.typesafe.sbt.packager.Keys.packageName
+import com.typesafe.sbt.packager.docker.DockerPlugin.autoImport.{dockerExposedPorts, dockerUpdateLatest}
+import com.typesafe.sbt.packager.docker.DockerPlugin.autoImport.Docker
 
 object BuildSettings {
+
+  lazy val projectSettings = Seq(
+    name := "sqs2kinesis",
+    version := "0.1.0",
+    organization := "com.snowplowanalytics",
+    scalaVersion := "2.13.1"
+  )
+
+  lazy val dockerSettings =
+    Seq(packageName in Docker := "snowplow/sqs2kinesis", dockerExposedPorts ++= Seq(8080), dockerUpdateLatest := true)
+
+  lazy val resolverSettings =
+    resolvers ++= Seq(
+      "Sonatype OSS Snapshots".at("https://oss.sonatype.org/content/repositories/snapshots/")
+    )
 
   lazy val compilerSettings = Seq[Setting[_]](
     scalacOptions := Seq(
@@ -29,8 +45,7 @@ object BuildSettings {
       "-Ywarn-dead-code",
       "-Ywarn-numeric-widen",
       "-Ywarn-unused",
-      "-Ywarn-value-discard",
-      "language:higherKinds"
+      "-Ywarn-value-discard"
     ),
     javacOptions := Seq(
       "-source",
@@ -39,19 +54,5 @@ object BuildSettings {
       "1.8",
       "-Xlint"
     )
-  )
-
-  lazy val assemblySettings = Seq(
-    assemblyJarName in assembly := {
-      s"${moduleName.value}-${version.value}.jar"
-    },
-    assemblyMergeStrategy in assembly := {
-      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
-      case x                             => MergeStrategy.first
-    }
-  )
-
-  lazy val helpersSettings = Seq[Setting[_]](
-    initialCommands := "import com.snowplowanalytics.sqs2kinesis._"
   )
 }
