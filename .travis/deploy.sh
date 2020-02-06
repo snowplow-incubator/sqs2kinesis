@@ -1,8 +1,6 @@
-#!/bin/bash
+#!/bin/sh
+set -ex
 
-tag=$1
+echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
-cd $TRAVIS_BUILD_DIR
-
-export TRAVIS_BUILD_RELEASE_TAG=${tag}
-release-manager --config ./.travis/release.yml --check-version --make-artifact --upload-artifact
+sbt docker:publish
