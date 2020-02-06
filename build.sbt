@@ -19,6 +19,10 @@ lazy val root = project
       "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
     ),
     libraryDependencies ++= Seq(
+      Dependencies.akkaStream,
+      Dependencies.alpakkaSqs,
+      Dependencies.alpakkaKinesis,
+      Dependencies.scalaLogging,
       Dependencies.specs2,
       Dependencies.scalaCheck
     )

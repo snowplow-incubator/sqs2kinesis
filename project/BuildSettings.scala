@@ -29,8 +29,7 @@ object BuildSettings {
       "-Ywarn-dead-code",
       "-Ywarn-numeric-widen",
       "-Ywarn-unused",
-      "-Ywarn-value-discard",
-      "language:higherKinds"
+      "-Ywarn-value-discard"
     ),
     javacOptions := Seq(
       "-source",
@@ -47,6 +46,7 @@ object BuildSettings {
     },
     assemblyMergeStrategy in assembly := {
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case PathList("reference.conf")    => MergeStrategy.concat
       case x                             => MergeStrategy.first
     }
   )
