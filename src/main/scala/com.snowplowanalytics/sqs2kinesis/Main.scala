@@ -13,36 +13,26 @@
 
 package com.snowplowanalytics.sqs2kinesis
 
-import scala.concurrent.duration._
-import com.amazonaws.services.kinesis.AmazonKinesisAsyncClientBuilder
-import com.amazonaws.services.kinesis.model.PutRecordsRequestEntry
 import com.github.matsluni.akkahttpspi.AkkaHttpClient
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
+import software.amazon.awssdk.services.sqs.model.Message
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import java.net.URI
+import java.nio.ByteBuffer
 import akka.actor.ActorSystem
 import akka.stream.scaladsl._
 import akka.stream.alpakka.sqs.scaladsl.SqsSource
 import akka.stream.alpakka.sqs.SqsSourceSettings
-import akka.stream.scaladsl.Sink
 import akka.stream.alpakka.kinesis.KinesisFlowSettings
+import akka.stream.alpakka.kinesis.scaladsl.KinesisFlow
+import akka.stream.alpakka.sqs.MessageAction
+import akka.stream.alpakka.sqs.scaladsl.SqsAckSink
 import akka.NotUsed
-import akka.stream.alpakka.kinesis.scaladsl.KinesisSink
-import software.amazon.awssdk.services.sqs.model.Message
-import java.nio.ByteBuffer
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
+import com.amazonaws.services.kinesis.AmazonKinesisAsyncClientBuilder
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.kinesis.model.PutRecordsResultEntry
-import akka.stream.alpakka.kinesis.scaladsl.KinesisFlow
-import akka.stream.alpakka.sqs.MessageAction
-import akka.stream.alpakka.sqs.SqsAckSettings
-import akka.stream.alpakka.sqs.SqsAckResult
-import akka.stream.alpakka.sqs.scaladsl.SqsAckSink
-import scala.concurrent.Future
-import akka.Done
-import com.amazonaws.services.kinesis.model.PutRecordRequest
-import com.amazonaws.services.kinesis.model.PutRecordsRequest
 
 object Main extends App {
 
@@ -56,72 +46,64 @@ object Main extends App {
 
   val region = Region.EU_CENTRAL_1
 
-  implicit val sqsClient = SqsAsyncClient
-    .builder()
-    .credentialsProvider(DefaultCredentialsProvider.create())
-    .endpointOverride(URI.create(sqsEndpoint))
-    .region(region)
-    .httpClient(AkkaHttpClient.builder().withActorSystem(system).build())
-    .build()
+  implicit val sqsClient = {
+    val client = SqsAsyncClient
+      .builder()
+      .credentialsProvider(DefaultCredentialsProvider.create())
+      .endpointOverride(URI.create(sqsEndpoint))
+      .region(region)
+      .httpClient(AkkaHttpClient.builder().withActorSystem(system).build())
+      .build()
 
-  system.registerOnTermination(sqsClient.close())
+    system.registerOnTermination(client.close())
+    client
+  }
 
-  implicit val kinesisClient: com.amazonaws.services.kinesis.AmazonKinesisAsync =
-    AmazonKinesisAsyncClientBuilder
+  implicit val kinesisClient = {
+    val client = AmazonKinesisAsyncClientBuilder
       .standard()
       .withCredentials(new DefaultAWSCredentialsProviderChain())
       .withEndpointConfiguration(new EndpointConfiguration(kinesisEndpoint, region.toString()))
       .build()
 
-  system.registerOnTermination(kinesisClient.shutdown())
-
-  // val flowSettings = KinesisFlowSettings
-  //   .create()
-  //   .withParallelism(1)
-  //   .withMaxBatchSize(500)
-  //   .withMaxRecordsPerSecond(1000)
-  //   .withMaxBytesPerSecond(1000000)
-  //   .withMaxRetries(5)
-  //   .withBackoffStrategy(KinesisFlowSettings.Exponential)
-  //   .withRetryInitialTimeout(100.milli)
-
-  val flowSettings = KinesisFlowSettings.Defaults
+    system.registerOnTermination(client.shutdown())
+    client
+  }
 
   val sqsSource: Source[Message, NotUsed] =
-    SqsSource(sqsQueue, SqsSourceSettings().withWaitTime(10.millis))
+    SqsSource(sqsQueue, SqsSourceSettings.Defaults)
 
-  val kinesisSink: Sink[(String, ByteBuffer), NotUsed] =
-    KinesisSink.byPartitionAndData(kinesisStreamName, flowSettings)
+  val kinesisFlow: Flow[(String, ByteBuffer), PutRecordsResultEntry, NotUsed] =
+    KinesisFlow
+      .byPartitionAndData(
+        kinesisStreamName,
+        KinesisFlowSettings.Defaults
+      )
 
   type KinesisKeyAndMsg = (String, ByteBuffer)
 
-  private val sqsMsg2kinesisMsg: Flow[Message, KinesisKeyAndMsg, NotUsed] =
+  val sqsMsg2kinesisMsg: Flow[Message, KinesisKeyAndMsg, NotUsed] =
     Flow[Message].map { m =>
       val decoded    = java.util.Base64.getDecoder().decode(m.body)
       val (key, msg) = decoded.splitAt(decoded.indexOf('|'.toByte))
       (new String(key), ByteBuffer.wrap(msg))
     }
 
-  val printMsg: Flow[Message, Message, NotUsed] =
-    Flow[Message].map { m =>
-      println(s"> ${m.body()}")
-      m
-    }
-
-  val printSent: Flow[KinesisKeyAndMsg, KinesisKeyAndMsg, NotUsed] =
-    Flow[KinesisKeyAndMsg].map { m =>
-      println(" < sent to kinesis")
-      m
+  val printMsg: Flow[(Message, Long), Message, NotUsed] =
+    Flow[(Message, Long)].map {
+      case (m, idx) =>
+        println(s"$idx> ${m.body().substring(0, 50)}")
+        m
     }
 
   def confirmSqsSink: Sink[Message, NotUsed] =
     Flow[Message].map(MessageAction.Delete(_)).to(SqsAckSink(sqsQueue))
 
-  sqsSource
+  sqsSource.zipWithIndex //todo: remove index and printing msg to stdout
     .via(printMsg)
-    .alsoTo(confirmSqsSink)
+    .alsoTo(confirmSqsSink) //todo: confirm after successfull send to Kinesis
     .via(sqsMsg2kinesisMsg)
-    .via(printSent)
-    .runWith(kinesisSink)
+    .via(kinesisFlow)
+    .runWith(Sink.ignore)
 
 }
