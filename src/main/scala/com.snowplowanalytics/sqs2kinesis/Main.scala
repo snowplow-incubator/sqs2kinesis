@@ -33,8 +33,17 @@ import com.amazonaws.services.kinesis.AmazonKinesisAsyncClientBuilder
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.kinesis.model.PutRecordsResultEntry
+import akka.stream.ActorAttributes
+import akka.stream.Supervision
+import akka.stream.Attributes
+import akka.event.Logging
+import com.typesafe.scalalogging.LazyLogging
+import akka.compat.Future
+import scala.concurrent.Future
+import com.amazonaws.services.kinesis.model.PutRecordsRequestEntry
+import scala.concurrent.duration._
 
-object Main extends App {
+object Main extends App with LazyLogging {
 
   implicit val system: ActorSystem = ActorSystem()
 
@@ -73,17 +82,27 @@ object Main extends App {
   val sqsSource: Source[Message, NotUsed] =
     SqsSource(sqsQueue, SqsSourceSettings.Defaults)
 
-  val kinesisFlow: Flow[(String, ByteBuffer), PutRecordsResultEntry, NotUsed] =
-    KinesisFlow
-      .byPartitionAndData(
-        kinesisStreamName,
-        KinesisFlowSettings.Defaults
-      )
-
   type KinesisKeyAndMsg = (String, ByteBuffer)
 
-  val sqsMsg2kinesisMsg: Flow[Message, KinesisKeyAndMsg, NotUsed] =
-    Flow[Message].map { m =>
+  val toPutRecordReqEntry: ((String, ByteBuffer)) => PutRecordsRequestEntry = {
+    case (key, data) =>
+      new PutRecordsRequestEntry()
+        .withPartitionKey(key)
+        .withData(data)
+  }
+
+  val kinesisFlow
+    : Flow[(PutRecordsRequestEntry, Message), (PutRecordsResultEntry, Message), NotUsed] =
+    RestartFlow.withBackoff(500.milli, 1.second, 0.2) { () =>
+      KinesisFlow
+        .withUserContext(
+          kinesisStreamName,
+          KinesisFlowSettings.Defaults.withMaxBatchSize(500).withMaxRetries(10)
+        )
+    }
+
+  val sqsMsg2kinesisMsg: Message => KinesisKeyAndMsg =
+    m => {
       val decoded    = java.util.Base64.getDecoder().decode(m.body)
       val (key, msg) = decoded.splitAt(decoded.indexOf('|'.toByte))
       (new String(key), ByteBuffer.wrap(msg))
@@ -92,18 +111,62 @@ object Main extends App {
   val printMsg: Flow[(Message, Long), Message, NotUsed] =
     Flow[(Message, Long)].map {
       case (m, idx) =>
-        println(s"$idx> ${m.body().substring(0, 50)}")
+        println(s"from sqs ${idx + 1}> ${m.body().substring(0, 50)}")
         m
     }
 
   def confirmSqsSink: Sink[Message, NotUsed] =
-    Flow[Message].map(MessageAction.Delete(_)).to(SqsAckSink(sqsQueue))
+    Flow[Message]
+      .map(MessageAction.Delete(_))
+      .to(SqsAckSink(sqsQueue))
+
+  val decider: Supervision.Decider = {
+    case e @ _ => {
+      logger.error("ERROR in stream", e)
+      println("ERROR in stream >>>>>>>>> ", e.getMessage())
+      Supervision.Resume
+    }
+  }
+
+  implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
 
   sqsSource.zipWithIndex //todo: remove index and printing msg to stdout
     .via(printMsg)
-    .alsoTo(confirmSqsSink) //todo: confirm after successfull send to Kinesis
-    .via(sqsMsg2kinesisMsg)
+    .asSourceWithContext(m => m)
+    .map(sqsMsg2kinesisMsg)
+    .map(toPutRecordReqEntry)
     .via(kinesisFlow)
-    .runWith(Sink.ignore)
+    .asSource
+    .alsoTo(Sink.foreach { case (r, _) => println(r) })
+    .map(_._2)
+    .alsoTo(confirmSqsSink)
+    .toMat(Sink.ignore)(Keep.right)
+    .withAttributes(ActorAttributes.supervisionStrategy(decider))
+    .run()
+    .onComplete(println)
+
+  // kinesis - consumer
+
+  import akka.stream.alpakka.kinesis.ShardSettings
+  // import com.amazonaws.services.kinesis.model.ShardIteratorType
+  import akka.stream.alpakka.kinesis.scaladsl.KinesisSource
+
+  val settings =
+    ShardSettings(streamName = "good-events", shardId = "shardId-000000000000")
+      .withRefreshInterval(1.second)
+      .withLimit(500)
+      // .withShardIteratorType(ShardIteratorType.AT_SEQUENCE_NUMBER)
+      .withStartingAfterSequenceNumber("49604123340698769188642183422668174591051070687106039810")
+
+  val kinesisSource: Source[com.amazonaws.services.kinesis.model.Record, NotUsed] =
+    KinesisSource.basic(settings, kinesisClient)
+
+  val kinesisConsumer =
+    kinesisSource.zipWithIndex.runWith(Sink.foreach {
+      case (x, idx) =>
+        println(s"consumed ${idx + 1}> ${x.getSequenceNumber}")
+    })
+
+  // kinesis - consumer
 
 }
