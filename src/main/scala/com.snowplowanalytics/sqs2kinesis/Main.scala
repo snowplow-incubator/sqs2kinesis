@@ -38,18 +38,21 @@ import akka.stream.Supervision
 import com.typesafe.scalalogging.LazyLogging
 import com.amazonaws.services.kinesis.model.PutRecordsRequestEntry
 import scala.concurrent.duration._
+import com.typesafe.config.ConfigFactory
 
 object Main extends App with LazyLogging {
 
+  val appConfig = ConfigFactory.load().getConfig("sqs2kinesis")
+
+  val sqsEndpoint       = appConfig.getString("sqs-endpoint")
+  val sqsQueue          = appConfig.getString("sqs-queue")
+  val kinesisEndpoint   = appConfig.getString("kinesis-endpoint")
+  val kinesisStreamName = appConfig.getString("kinesis-stream-name")
+
+  logger.info(s"config: $appConfig")
+
   implicit val system: ActorSystem = ActorSystem()
-
-  val sqsEndpoint = "http://localhost:4576"
-  val sqsQueue    = "http://localhost:4576/queue/good-events-queue"
-
-  val kinesisEndpoint   = "http://localhost:4568/"
-  val kinesisStreamName = "good-events"
-
-  val region = Region.EU_CENTRAL_1
+  val region                       = Region.EU_CENTRAL_1
 
   implicit val sqsClient = {
     val client = SqsAsyncClient
@@ -119,7 +122,6 @@ object Main extends App with LazyLogging {
   val decider: Supervision.Decider = {
     case e @ _ => {
       logger.error("ERROR in stream", e)
-      println("ERROR in stream >>>>>>>>> ", e.getMessage())
       Supervision.Resume
     }
   }
