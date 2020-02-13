@@ -141,28 +141,4 @@ object Main extends App with LazyLogging {
     .run()
     .onComplete(println)
 
-  // kinesis - consumer
-
-  import akka.stream.alpakka.kinesis.ShardSettings
-  // import com.amazonaws.services.kinesis.model.ShardIteratorType
-  import akka.stream.alpakka.kinesis.scaladsl.KinesisSource
-
-  val settings =
-    ShardSettings(streamName = "good-events", shardId = "shardId-000000000000")
-      .withRefreshInterval(1.second)
-      .withLimit(500)
-      // .withShardIteratorType(ShardIteratorType.AT_SEQUENCE_NUMBER)
-      .withStartingAfterSequenceNumber("49604123340698769188642183422668174591051070687106039810")
-
-  val kinesisSource: Source[com.amazonaws.services.kinesis.model.Record, NotUsed] =
-    KinesisSource.basic(settings, kinesisClient)
-
-  val kinesisConsumer =
-    kinesisSource.zipWithIndex.runWith(Sink.foreach {
-      case (x, idx) =>
-        println(s"consumed ${idx + 1}> ${x.getSequenceNumber}")
-    })
-
-  // kinesis - consumer
-
 }
