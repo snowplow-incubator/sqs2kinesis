@@ -35,11 +35,7 @@ import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.kinesis.model.PutRecordsResultEntry
 import akka.stream.ActorAttributes
 import akka.stream.Supervision
-import akka.stream.Attributes
-import akka.event.Logging
 import com.typesafe.scalalogging.LazyLogging
-import akka.compat.Future
-import scala.concurrent.Future
 import com.amazonaws.services.kinesis.model.PutRecordsRequestEntry
 import scala.concurrent.duration._
 
