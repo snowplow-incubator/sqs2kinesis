@@ -1,0 +1,133 @@
+package com.snowplowanalytics.sqs2kinesis
+
+import com.github.matsluni.akkahttpspi.AkkaHttpClient
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.sqs.SqsAsyncClient
+import software.amazon.awssdk.services.sqs.model.Message
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
+import java.net.URI
+import java.nio.ByteBuffer
+import akka.actor.ActorSystem
+import akka.stream.scaladsl._
+import akka.stream.alpakka.sqs.scaladsl.SqsSource
+import akka.stream.alpakka.sqs.SqsSourceSettings
+import akka.stream.alpakka.kinesis.KinesisFlowSettings
+import akka.stream.alpakka.kinesis.scaladsl.KinesisFlow
+import akka.stream.alpakka.sqs.MessageAction
+import akka.stream.alpakka.sqs.scaladsl.SqsAckSink
+import akka.NotUsed
+import com.amazonaws.services.kinesis.AmazonKinesisAsyncClientBuilder
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
+import com.amazonaws.services.kinesis.model.PutRecordsResultEntry
+import akka.stream.ActorAttributes
+import akka.stream.Supervision
+import com.amazonaws.services.kinesis.model.PutRecordsRequestEntry
+import scala.concurrent.duration._
+import com.typesafe.scalalogging.Logger
+
+object EventsStreamModule {
+
+  case class StreamConfig(
+    sqsEndpoint: String,
+    sqsQueue: String,
+    kinesisEndpoint: String,
+    kinesisStreamName: String
+  )
+
+  val logger = Logger[EventsStreamModule.type]
+
+  def runStream(config: StreamConfig, awsRegion: Region)(implicit system: ActorSystem) = {
+
+    implicit val sqsClient = {
+      val client = SqsAsyncClient
+        .builder()
+        .credentialsProvider(DefaultCredentialsProvider.create())
+        .endpointOverride(URI.create(config.sqsEndpoint))
+        .region(awsRegion)
+        .httpClient(AkkaHttpClient.builder().withActorSystem(system).build())
+        .build()
+
+      system.registerOnTermination(client.close())
+      client
+    }
+
+    implicit val kinesisClient = {
+      val client = AmazonKinesisAsyncClientBuilder
+        .standard()
+        .withCredentials(new DefaultAWSCredentialsProviderChain())
+        .withEndpointConfiguration(
+          new EndpointConfiguration(config.kinesisEndpoint, awsRegion.toString())
+        )
+        .build()
+
+      system.registerOnTermination(client.shutdown())
+      client
+    }
+
+    val sqsSource: Source[Message, NotUsed] =
+      SqsSource(config.sqsQueue, SqsSourceSettings.Defaults)
+
+    type KinesisKeyAndMsg = (String, ByteBuffer)
+
+    val toPutRecordReqEntry: ((String, ByteBuffer)) => PutRecordsRequestEntry = {
+      case (key, data) =>
+        new PutRecordsRequestEntry()
+          .withPartitionKey(key)
+          .withData(data)
+    }
+
+    val kinesisFlow
+      : Flow[(PutRecordsRequestEntry, Message), (PutRecordsResultEntry, Message), NotUsed] =
+      RestartFlow.withBackoff(500.milli, 1.second, 0.2) { () =>
+        KinesisFlow
+          .withUserContext(
+            config.kinesisStreamName,
+            KinesisFlowSettings.Defaults.withMaxBatchSize(500).withMaxRetries(10)
+          )
+      }
+
+    val sqsMsg2kinesisMsg: Message => KinesisKeyAndMsg =
+      m => {
+        val decoded    = java.util.Base64.getDecoder().decode(m.body)
+        val (key, msg) = decoded.splitAt(decoded.indexOf('|'.toByte))
+        (new String(key), ByteBuffer.wrap(msg))
+      }
+
+    val printMsg: Flow[(Message, Long), Message, NotUsed] =
+      Flow[(Message, Long)].map {
+        case (m, idx) =>
+          println(s"from sqs ${idx + 1}> ${m.body().substring(0, 50)}")
+          m
+      }
+
+    def confirmSqsSink: Sink[Message, NotUsed] =
+      Flow[Message]
+        .map(MessageAction.Delete(_))
+        .to(SqsAckSink(config.sqsQueue))
+
+    val decider: Supervision.Decider = {
+      case e @ _ => {
+        logger.error("ERROR in stream", e)
+        Supervision.Resume
+      }
+    }
+
+    implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
+
+    sqsSource.zipWithIndex //todo: remove index and printing msg to stdout
+      .via(printMsg)
+      .asSourceWithContext(m => m)
+      .map(sqsMsg2kinesisMsg)
+      .map(toPutRecordReqEntry)
+      .via(kinesisFlow)
+      .asSource
+      .alsoTo(Sink.foreach { case (r, _) => println(r) })
+      .map(_._2)
+      .alsoTo(confirmSqsSink)
+      .toMat(Sink.ignore)(Keep.right)
+      .withAttributes(ActorAttributes.supervisionStrategy(decider))
+      .run()
+      .onComplete(println)
+  }
+}
