@@ -52,14 +52,14 @@ object Main extends App with LazyLogging {
   logger.info(s"config: $appConfig")
 
   implicit val system: ActorSystem = ActorSystem()
-  val region                       = Region.EU_CENTRAL_1
+  val AwsRegion                    = Region.EU_CENTRAL_1
 
   implicit val sqsClient = {
     val client = SqsAsyncClient
       .builder()
       .credentialsProvider(DefaultCredentialsProvider.create())
       .endpointOverride(URI.create(sqsEndpoint))
-      .region(region)
+      .region(AwsRegion)
       .httpClient(AkkaHttpClient.builder().withActorSystem(system).build())
       .build()
 
@@ -71,7 +71,7 @@ object Main extends App with LazyLogging {
     val client = AmazonKinesisAsyncClientBuilder
       .standard()
       .withCredentials(new DefaultAWSCredentialsProviderChain())
-      .withEndpointConfiguration(new EndpointConfiguration(kinesisEndpoint, region.toString()))
+      .withEndpointConfiguration(new EndpointConfiguration(kinesisEndpoint, AwsRegion.toString()))
       .build()
 
     system.registerOnTermination(client.shutdown())

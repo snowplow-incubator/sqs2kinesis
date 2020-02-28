@@ -10,10 +10,12 @@ lazy val root = project
   .settings(BuildSettings.assemblySettings)
   .settings(BuildSettings.compilerSettings)
   .enablePlugins(BuildInfoPlugin)
+  .enablePlugins(JavaAppPackaging, DockerPlugin)
   .settings(
     buildInfoKeys := Seq[BuildInfoKey](organization, name, version),
     buildInfoPackage := "com.snowplowanalytics.sqs2kinesis.generated"
   )
+  .settings(packageName in Docker := "lukeindykiewicz/sqs2kinesis")
   .settings(
     resolvers ++= Seq(
       "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
