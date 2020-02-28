@@ -2,7 +2,7 @@ lazy val root = project
   .in(file("."))
   .settings(
     name := "sqs2kinesis",
-    version := "0.1.0-rc1",
+    version := "0.1.0-rc2",
     organization := "com.snowplowanalytics",
     scalaVersion := "2.13.1",
     initialCommands := "import com.snowplowanalytics.sqs2kinesis._"
@@ -16,6 +16,7 @@ lazy val root = project
     buildInfoPackage := "com.snowplowanalytics.sqs2kinesis.generated"
   )
   .settings(packageName in Docker := "lukeindykiewicz/sqs2kinesis")
+  .settings(dockerExposedPorts ++= Seq(8080))
   .settings(
     resolvers ++= Seq(
       "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"

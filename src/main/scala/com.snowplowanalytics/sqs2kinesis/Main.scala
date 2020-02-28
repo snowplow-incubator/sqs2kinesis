@@ -35,6 +35,7 @@ object Main extends App with LazyLogging {
 
   implicit val system: ActorSystem = ActorSystem()
 
-  EventsStreamModule.runStream(config, Region.EU_CENTRAL_1)(system)
+  EventsStreamModule.runStream(config, Region.EU_CENTRAL_1)
+  HttpModule.runHttpServer("0.0.0.0", 8080)
 
 }
