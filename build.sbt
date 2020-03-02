@@ -17,6 +17,7 @@ lazy val root = project
   )
   .settings(packageName in Docker := "lukeindykiewicz/sqs2kinesis")
   .settings(dockerExposedPorts ++= Seq(8080))
+  .settings(dockerUpdateLatest := true)
   .settings(
     resolvers ++= Seq(
       "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
