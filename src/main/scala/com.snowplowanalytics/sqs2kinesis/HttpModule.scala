@@ -19,7 +19,7 @@ object HttpModule {
       }
 
     Http().bindAndHandle(route, host, port)
-    println(s"Server online at http://$host:$port")
+    println(s"Server online at http://$host:$port") //todo: remove println
   }
 
 }

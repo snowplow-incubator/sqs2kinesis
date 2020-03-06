@@ -13,7 +13,6 @@
 
 package com.snowplowanalytics.sqs2kinesis
 
-import software.amazon.awssdk.regions.Region
 import akka.actor.ActorSystem
 import com.typesafe.scalalogging.LazyLogging
 import com.typesafe.config.ConfigFactory
@@ -35,7 +34,7 @@ object Main extends App with LazyLogging {
 
   implicit val system: ActorSystem = ActorSystem()
 
-  EventsStreamModule.runStream(config, Region.EU_CENTRAL_1)
+  EventsStreamModule.runStream(config)
   HttpModule.runHttpServer("0.0.0.0", 8080)
 
 }

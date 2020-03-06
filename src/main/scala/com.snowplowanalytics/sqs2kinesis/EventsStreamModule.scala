@@ -1,11 +1,11 @@
 package com.snowplowanalytics.sqs2kinesis
 
 import com.github.matsluni.akkahttpspi.AkkaHttpClient
-import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.Message
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
-import java.net.URI
+import com.amazonaws.services.kinesis.AmazonKinesisAsyncClientBuilder
+import com.amazonaws.services.kinesis.model.PutRecordsResultEntry
+import com.amazonaws.services.kinesis.model.PutRecordsRequestEntry
 import java.nio.ByteBuffer
 import akka.actor.ActorSystem
 import akka.stream.scaladsl._
@@ -16,13 +16,8 @@ import akka.stream.alpakka.kinesis.scaladsl.KinesisFlow
 import akka.stream.alpakka.sqs.MessageAction
 import akka.stream.alpakka.sqs.scaladsl.SqsAckSink
 import akka.NotUsed
-import com.amazonaws.services.kinesis.AmazonKinesisAsyncClientBuilder
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
-import com.amazonaws.services.kinesis.model.PutRecordsResultEntry
 import akka.stream.ActorAttributes
 import akka.stream.Supervision
-import com.amazonaws.services.kinesis.model.PutRecordsRequestEntry
 import scala.concurrent.duration._
 import com.typesafe.scalalogging.Logger
 
@@ -37,14 +32,11 @@ object EventsStreamModule {
 
   val logger = Logger[EventsStreamModule.type]
 
-  def runStream(config: StreamConfig, awsRegion: Region)(implicit system: ActorSystem) = {
+  def runStream(config: StreamConfig)(implicit system: ActorSystem) = {
 
     implicit val sqsClient = {
       val client = SqsAsyncClient
         .builder()
-        .credentialsProvider(DefaultCredentialsProvider.create())
-        .endpointOverride(URI.create(config.sqsEndpoint))
-        .region(awsRegion)
         .httpClient(AkkaHttpClient.builder().withActorSystem(system).build())
         .build()
 
@@ -53,13 +45,7 @@ object EventsStreamModule {
     }
 
     implicit val kinesisClient = {
-      val client = AmazonKinesisAsyncClientBuilder
-        .standard()
-        .withCredentials(new DefaultAWSCredentialsProviderChain())
-        .withEndpointConfiguration(
-          new EndpointConfiguration(config.kinesisEndpoint, awsRegion.toString())
-        )
-        .build()
+      val client = AmazonKinesisAsyncClientBuilder.standard().build()
 
       system.registerOnTermination(client.shutdown())
       client
