@@ -8,9 +8,7 @@ script:
 - sbt test
 deploy:
 - provider: script
-  script:
-  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-  - sbt docker:publish
+  script: bash .travis/deploy.sh
   skip_cleanup: true
   on:
     tags: true
