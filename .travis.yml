@@ -5,4 +5,12 @@ scala:
 jdk:
 - openjdk8
 script:
-- sbt test
+  - sbt test
+deploy:
+  - provider: script
+    script: 
+      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      - sbt docker:publish 
+    skip_cleanup: true
+    on:
+      tags: true
