@@ -15,7 +15,7 @@ lazy val root = project
     buildInfoKeys := Seq[BuildInfoKey](organization, name, version),
     buildInfoPackage := "com.snowplowanalytics.sqs2kinesis.generated"
   )
-  .settings(packageName in Docker := "lukeindykiewicz/sqs2kinesis")
+  .settings(packageName in Docker := "snowplow/sqs2kinesis")
   .settings(dockerExposedPorts ++= Seq(8080))
   .settings(dockerUpdateLatest := true)
   .settings(
