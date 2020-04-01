@@ -26,6 +26,7 @@ object EventsStreamModule {
   case class StreamConfig(
     sqsEndpoint: String,
     sqsQueue: String,
+    sqsKeyValueSeparator: String,
     kinesisEndpoint: String,
     kinesisStreamName: String
   )
@@ -76,7 +77,7 @@ object EventsStreamModule {
     val sqsMsg2kinesisMsg: Message => KinesisKeyAndMsg =
       m => {
         val decoded    = java.util.Base64.getDecoder().decode(m.body)
-        val (key, msg) = decoded.splitAt(decoded.indexOf('|'.toByte))
+        val (key, msg) = decoded.splitAt(decoded.indexOf(config.sqsKeyValueSeparator.toByte))
         (new String(key), ByteBuffer.wrap(msg))
       }
 
