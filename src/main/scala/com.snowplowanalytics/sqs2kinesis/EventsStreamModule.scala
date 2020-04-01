@@ -81,13 +81,6 @@ object EventsStreamModule {
         (new String(key), ByteBuffer.wrap(msg))
       }
 
-    val printMsg: Flow[(Message, Long), Message, NotUsed] =
-      Flow[(Message, Long)].map {
-        case (m, idx) =>
-          println(s"from sqs ${idx + 1}> ${m.body().substring(0, 50)}")
-          m
-      }
-
     def confirmSqsSink: Sink[Message, NotUsed] =
       Flow[Message]
         .map(MessageAction.Delete(_))
@@ -95,26 +88,21 @@ object EventsStreamModule {
 
     val decider: Supervision.Decider = {
       case e @ _ => {
-        logger.error("ERROR in stream", e)
+        logger.error("Error in stream:", e)
         Supervision.Resume
       }
     }
 
-    implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
-
-    sqsSource.zipWithIndex //todo: remove index and printing msg to stdout
-      .via(printMsg)
+    sqsSource
       .asSourceWithContext(m => m)
       .map(sqsMsg2kinesisMsg)
       .map(toPutRecordReqEntry)
       .via(kinesisFlow)
       .asSource
-      .alsoTo(Sink.foreach { case (r, _) => println(r) })
       .map(_._2)
       .alsoTo(confirmSqsSink)
       .toMat(Sink.ignore)(Keep.right)
       .withAttributes(ActorAttributes.supervisionStrategy(decider))
       .run()
-      .onComplete(println)
   }
 }
