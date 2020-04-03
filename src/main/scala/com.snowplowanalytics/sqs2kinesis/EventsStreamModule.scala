@@ -26,7 +26,7 @@ object EventsStreamModule {
   case class StreamConfig(
     sqsEndpoint: String,
     sqsQueue: String,
-    sqsKeyValueSeparator: String,
+    sqsKeyValueSeparator: Char,
     kinesisEndpoint: String,
     kinesisStreamName: String
   )

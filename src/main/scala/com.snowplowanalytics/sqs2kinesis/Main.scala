@@ -30,7 +30,8 @@ object Main extends App with LazyLogging {
     val kinesisStreamName = conf.getString("kinesis-stream-name")
     // this config param has a default value
     val sqsKeyValueSeparator =
-      Try(conf.getString("sqs-key-value-separator")).toOption.getOrElse("|")
+      Try(conf.getString("sqs-key-value-separator").getBytes().headOption.map(_.toChar)).toOption.flatten
+        .getOrElse('|')
 
     val streamConfig = EventsStreamModule.StreamConfig(
       sqsEndpoint,
