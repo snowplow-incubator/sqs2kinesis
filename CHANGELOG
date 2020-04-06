@@ -1,3 +1,4 @@
-Version 0.1.0 (2020-MM-DD)
+Version 0.1.0 (2020-04-06)
 --------------------------
 Initial release
+Read from sqs, write to Kinesis (#3) 
