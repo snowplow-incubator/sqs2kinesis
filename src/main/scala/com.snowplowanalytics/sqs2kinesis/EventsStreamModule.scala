@@ -37,10 +37,8 @@ import com.typesafe.scalalogging.Logger
 object EventsStreamModule {
 
   case class StreamConfig(
-    sqsEndpoint: String,
     sqsQueue: String,
     sqsKeyValueSeparator: Char,
-    kinesisEndpoint: String,
     kinesisStreamName: String
   )
 

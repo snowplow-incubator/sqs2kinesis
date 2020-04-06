@@ -24,19 +24,15 @@ object Main extends App with LazyLogging {
 
     // lack of one of those settings should throw an exception and stop the application
     val conf              = ConfigFactory.load().getConfig("sqs2kinesis")
-    val sqsEndpoint       = conf.getString("sqs-endpoint")
     val sqsQueue          = conf.getString("sqs-queue")
-    val kinesisEndpoint   = conf.getString("kinesis-endpoint")
     val kinesisStreamName = conf.getString("kinesis-stream-name")
     // this config param has a default value
     val sqsKeyValueSeparator =
       Try(conf.getString("sqs-key-value-separator").headOption).toOption.flatten.getOrElse('|')
 
     val streamConfig = EventsStreamModule.StreamConfig(
-      sqsEndpoint,
       sqsQueue,
       sqsKeyValueSeparator,
-      kinesisEndpoint,
       kinesisStreamName
     )
     logger.info(s"config: $streamConfig")
