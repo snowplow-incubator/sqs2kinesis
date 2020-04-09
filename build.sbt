@@ -2,7 +2,7 @@ lazy val root = project
   .in(file("."))
   .settings(
     name := "sqs2kinesis",
-    version := "0.1.0",
+    version := "0.1.0-rc9",
     organization := "com.snowplowanalytics",
     scalaVersion := "2.13.1",
     initialCommands := "import com.snowplowanalytics.sqs2kinesis._"
