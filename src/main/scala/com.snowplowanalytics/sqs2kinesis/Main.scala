@@ -16,23 +16,17 @@ package com.snowplowanalytics.sqs2kinesis
 import akka.actor.ActorSystem
 import com.typesafe.scalalogging.LazyLogging
 import com.typesafe.config.ConfigFactory
-import scala.util.Try
 
 object Main extends App with LazyLogging {
 
   val config = {
-
     // lack of one of those settings should throw an exception and stop the application
     val conf              = ConfigFactory.load().getConfig("sqs2kinesis")
     val sqsQueue          = conf.getString("sqs-queue")
     val kinesisStreamName = conf.getString("kinesis-stream-name")
-    // this config param has a default value
-    val sqsKeyValueSeparator =
-      Try(conf.getString("sqs-key-value-separator").headOption).toOption.flatten.getOrElse('|')
 
     val streamConfig = EventsStreamModule.StreamConfig(
       sqsQueue,
-      sqsKeyValueSeparator,
       kinesisStreamName
     )
     logger.info(s"config: $streamConfig")

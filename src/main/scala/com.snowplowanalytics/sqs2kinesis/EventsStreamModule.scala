@@ -33,26 +33,16 @@ import akka.stream.ActorAttributes
 import akka.stream.Supervision
 import scala.concurrent.duration._
 import com.typesafe.scalalogging.Logger
+import java.util.UUID
 
 object EventsStreamModule {
 
   case class StreamConfig(
     sqsQueue: String,
-    sqsKeyValueSeparator: Char,
     kinesisStreamName: String
   )
 
   private val logger = Logger[EventsStreamModule.type]
-
-  type KinesisKeyAndMsg = (String, ByteBuffer)
-
-  def sqsMsg2kinesisMsg(sqsKeyValueSeparator: Char): String => KinesisKeyAndMsg =
-    msgBody => {
-      val decoded          = java.util.Base64.getDecoder().decode(msgBody)
-      val (key, msg)       = decoded.splitAt(decoded.indexOf(sqsKeyValueSeparator.toByte))
-      val withoutSeparator = msg.tail
-      (new String(key), ByteBuffer.wrap(withoutSeparator))
-    }
 
   def runStream(config: StreamConfig)(implicit system: ActorSystem) = {
 
@@ -72,6 +62,21 @@ object EventsStreamModule {
 
     val sqsSource: Source[Message, NotUsed] =
       SqsSource(config.sqsQueue, SqsSourceSettings.Defaults)
+
+    type KinesisKeyAndMsg = (String, ByteBuffer)
+
+    val sqsMsg2kinesisMsg: Message => KinesisKeyAndMsg =
+      msg => {
+        import scala.jdk.CollectionConverters._
+        val msgBodyBuff = ByteBuffer.wrap(msg.body.getBytes())
+        val maybeKey    = msg.messageAttributes().asScala.get("kinesisKey").map(_.stringValue())
+        val key = maybeKey.getOrElse {
+          val randomKey = UUID.randomUUID().toString()
+          logger.warn(s"Kinesis key for sqs message ${msg.messageId()} not found, random key generated: $randomKey")
+          randomKey
+        }
+        (key, msgBodyBuff)
+      }
 
     val toPutRecordReqEntry: KinesisKeyAndMsg => PutRecordsRequestEntry = {
       case (key, data) =>
@@ -104,8 +109,7 @@ object EventsStreamModule {
 
     sqsSource
       .asSourceWithContext(m => m)
-      .map(_.body())
-      .map(sqsMsg2kinesisMsg(config.sqsKeyValueSeparator))
+      .map(sqsMsg2kinesisMsg)
       .map(toPutRecordReqEntry)
       .via(kinesisFlow)
       .asSource
