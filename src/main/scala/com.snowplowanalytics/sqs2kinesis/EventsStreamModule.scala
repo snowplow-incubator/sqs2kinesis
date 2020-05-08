@@ -67,12 +67,15 @@ object EventsStreamModule {
 
     val sqsMsg2kinesisMsg: Message => KinesisKeyAndMsg =
       msg => {
-        import scala.jdk.CollectionConverters._
         val msgBodyBuff = ByteBuffer.wrap(msg.body.getBytes())
-        val maybeKey    = msg.messageAttributes().asScala.get("kinesisKey").map(_.stringValue())
+        val maybeKey    = Option(msg.messageAttributes().get("kinesisKey")).map(_.stringValue())
         val key = maybeKey.getOrElse {
           val randomKey = UUID.randomUUID().toString()
-          logger.warn(s"Kinesis key for sqs message ${msg.messageId()} not found, random key generated: $randomKey")
+          logger.warn(
+            s"""Kinesis key for sqs message ${msg.messageId()} not found, 
+            get kinesisKey : ${msg.messageAttributes().get("kinesisKey")}; 
+            random key generated: $randomKey"""
+          )
           randomKey
         }
         (key, msgBodyBuff)
