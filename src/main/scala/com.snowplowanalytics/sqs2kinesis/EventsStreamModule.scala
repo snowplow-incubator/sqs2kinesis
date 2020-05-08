@@ -34,6 +34,7 @@ import akka.stream.Supervision
 import scala.concurrent.duration._
 import com.typesafe.scalalogging.Logger
 import java.util.UUID
+import akka.stream.alpakka.sqs.MessageAttributeName
 
 object EventsStreamModule {
 
@@ -60,22 +61,34 @@ object EventsStreamModule {
       client
     }
 
+    val KinesisKey = "kinesisKey"
+
     val sqsSource: Source[Message, NotUsed] =
-      SqsSource(config.sqsQueue, SqsSourceSettings.Defaults)
+      SqsSource(
+        config.sqsQueue,
+        SqsSourceSettings.Defaults.withMessageAttribute(MessageAttributeName(KinesisKey))
+      )
 
     type KinesisKeyAndMsg = (String, ByteBuffer)
 
     val sqsMsg2kinesisMsg: Message => KinesisKeyAndMsg =
       msg => {
         import scala.jdk.CollectionConverters._
-        val msgBodyBuff = ByteBuffer.wrap(msg.body.getBytes())
-        val maybeKey    = msg.messageAttributes().asScala.get("kinesisKey").map(_.stringValue())
+        val decoded = ByteBuffer.wrap(java.util.Base64.getDecoder().decode(msg.body))
+        logger.info(s"decoded msg: $decoded")
+        val attributes = msg
+          .messageAttributes()
+          .asScala
+          .map { case (k, v) => s"(> key: $k, data type: ${v.dataType()}, string value: ${v.stringValue()} )\n" }
+          .mkString
+        logger.info(s"attributes: $attributes")
+        val maybeKey = Option(msg.messageAttributes().get(KinesisKey)).map(_.stringValue())
         val key = maybeKey.getOrElse {
           val randomKey = UUID.randomUUID().toString()
           logger.warn(s"Kinesis key for sqs message ${msg.messageId()} not found, random key generated: $randomKey")
           randomKey
         }
-        (key, msgBodyBuff)
+        (key, decoded)
       }
 
     val toPutRecordReqEntry: KinesisKeyAndMsg => PutRecordsRequestEntry = {
