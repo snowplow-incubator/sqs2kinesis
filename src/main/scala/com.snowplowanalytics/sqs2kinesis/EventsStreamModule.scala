@@ -72,7 +72,8 @@ object EventsStreamModule {
         val maybeKey    = msg.messageAttributes().asScala.get("kinesisKey").map(_.stringValue())
         val key = maybeKey.getOrElse {
           val randomKey = UUID.randomUUID().toString()
-          logger.warn(s"Kinesis key for sqs message ${msg.messageId()} not found, random key generated: $randomKey")
+          logger.warn(s"Kinesis key for sqs message ${msg.messageId()} not found, the message contains atributes: ${msg
+            .messageAttributes()}; random key generated: $randomKey")
           randomKey
         }
         (key, msgBodyBuff)
