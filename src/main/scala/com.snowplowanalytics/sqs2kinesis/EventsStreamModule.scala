@@ -16,7 +16,7 @@ package com.snowplowanalytics.sqs2kinesis
 import com.github.matsluni.akkahttpspi.AkkaHttpClient
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.Message
-import com.amazonaws.services.kinesis.AmazonKinesisAsyncClientBuilder
+import com.amazonaws.services.kinesis.{AmazonKinesisAsync, AmazonKinesisAsyncClientBuilder}
 import com.amazonaws.services.kinesis.model.PutRecordsResultEntry
 import com.amazonaws.services.kinesis.model.PutRecordsRequestEntry
 import java.nio.ByteBuffer
@@ -34,6 +34,7 @@ import akka.stream.Supervision
 import scala.concurrent.duration._
 import com.typesafe.scalalogging.Logger
 import java.util.UUID
+import akka.stream.alpakka.sqs.MessageAttributeName
 
 object EventsStreamModule {
 
@@ -46,36 +47,41 @@ object EventsStreamModule {
 
   def runStream(config: StreamConfig)(implicit system: ActorSystem) = {
 
-    implicit val sqsClient = {
+    implicit val sqsClient: SqsAsyncClient = {
       val client = SqsAsyncClient.builder().httpClient(AkkaHttpClient.builder().withActorSystem(system).build()).build()
 
       system.registerOnTermination(client.close())
       client
     }
 
-    implicit val kinesisClient = {
+    implicit val kinesisClient: AmazonKinesisAsync = {
       val client = AmazonKinesisAsyncClientBuilder.standard().build()
 
       system.registerOnTermination(client.shutdown())
       client
     }
 
+    val KinesisKey = "kinesisKey"
+
     val sqsSource: Source[Message, NotUsed] =
-      SqsSource(config.sqsQueue, SqsSourceSettings.Defaults)
+      SqsSource(
+        config.sqsQueue,
+        SqsSourceSettings.Defaults.withMessageAttribute(MessageAttributeName(KinesisKey))
+      )
 
     type KinesisKeyAndMsg = (String, ByteBuffer)
 
     val sqsMsg2kinesisMsg: Message => KinesisKeyAndMsg =
       msg => {
-        import scala.jdk.CollectionConverters._
-        val msgBodyBuff = ByteBuffer.wrap(msg.body.getBytes())
-        val maybeKey    = msg.messageAttributes().asScala.get("kinesisKey").map(_.stringValue())
+        val decoded  = ByteBuffer.wrap(java.util.Base64.getDecoder.decode(msg.body))
+        val maybeKey = Option(msg.messageAttributes().get(KinesisKey)).map(_.stringValue())
         val key = maybeKey.getOrElse {
-          val randomKey = UUID.randomUUID().toString()
+          val randomKey = UUID.randomUUID().toString
           logger.warn(s"Kinesis key for sqs message ${msg.messageId()} not found, random key generated: $randomKey")
           randomKey
         }
-        (key, msgBodyBuff)
+        logger.info(s"key: $key, msg size: ${decoded.array().length}")
+        (key, decoded)
       }
 
     val toPutRecordReqEntry: KinesisKeyAndMsg => PutRecordsRequestEntry = {
@@ -85,10 +91,20 @@ object EventsStreamModule {
 
     val kinesisFlow: Flow[(PutRecordsRequestEntry, Message), (PutRecordsResultEntry, Message), NotUsed] =
       RestartFlow.withBackoff(500.milli, 1.second, 0.2) { () =>
-        KinesisFlow.withUserContext(
-          config.kinesisStreamName,
-          KinesisFlowSettings.Defaults.withMaxBatchSize(500).withMaxRetries(10)
-        )
+        KinesisFlow
+          .withUserContext(
+            config.kinesisStreamName,
+            KinesisFlowSettings.Defaults.withMaxBatchSize(500).withMaxRetries(10)
+          )
+          .log("kinesisFlow", x => {
+            logger.error(s"error message: ${x._1.getErrorMessage()}, error code: ${x._1.getErrorCode()}")
+            x
+          })
+      // .recover {
+      //   case e =>
+      //     logger.error("Excpetion in kinesis flow", e)
+      //     throw new Exception(e)
+      // }
       }
 
     val confirmSqsSink: Sink[Message, NotUsed] =
