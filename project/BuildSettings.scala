@@ -22,7 +22,7 @@ object BuildSettings {
 
   lazy val projectSettings = Seq(
     name := "sqs2kinesis",
-    version := "0.1.0-rc10",
+    version := "0.1.0-rc10-13",
     organization := "com.snowplowanalytics",
     scalaVersion := "2.13.1"
   )
