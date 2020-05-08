@@ -22,15 +22,17 @@ object Dependencies {
     val config       = "1.4.0"
     val logback      = "1.2.3"
     val specs2       = "4.7.0"
+    val cbor         = "2.9.10"
   }
 
-  val awsSqsSdk      = "com.amazonaws"              % "aws-java-sdk-sqs"             % V.awsSdk
-  val awsKinesisSdk  = "com.amazonaws"              % "aws-java-sdk-kinesis"         % V.awsSdk
-  val akkaStream     = "com.typesafe.akka"          %% "akka-stream"                 % V.akka
-  val alpakkaSqs     = "com.lightbend.akka"         %% "akka-stream-alpakka-sqs"     % V.alpakka
-  val alpakkaKinesis = "com.lightbend.akka"         %% "akka-stream-alpakka-kinesis" % V.alpakka
-  val scalaLogging   = "com.typesafe.scala-logging" %% "scala-logging"               % V.scalaLogging
-  val config         = "com.typesafe"               % "config"                       % V.config
-  val logback        = "ch.qos.logback"             % "logback-classic"              % V.logback % Runtime
-  val specs2         = "org.specs2"                 %% "specs2-core"                 % V.specs2 % Test
+  val awsSqsSdk      = "com.amazonaws"                    % "aws-java-sdk-sqs"             % V.awsSdk
+  val awsKinesisSdk  = "com.amazonaws"                    % "aws-java-sdk-kinesis"         % V.awsSdk
+  val akkaStream     = "com.typesafe.akka"                %% "akka-stream"                 % V.akka
+  val alpakkaSqs     = "com.lightbend.akka"               %% "akka-stream-alpakka-sqs"     % V.alpakka
+  val alpakkaKinesis = "com.lightbend.akka"               %% "akka-stream-alpakka-kinesis" % V.alpakka
+  val scalaLogging   = "com.typesafe.scala-logging"       %% "scala-logging"               % V.scalaLogging
+  val config         = "com.typesafe"                     % "config"                       % V.config
+  val cbor           = "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor"      % V.cbor
+  val logback        = "ch.qos.logback"                   % "logback-classic"              % V.logback % Runtime
+  val specs2         = "org.specs2"                       %% "specs2-core"                 % V.specs2 % Test
 }
