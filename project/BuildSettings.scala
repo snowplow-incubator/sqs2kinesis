@@ -11,12 +11,10 @@
  * See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
  */
 
+import com.typesafe.sbt.packager.Keys._
+import com.typesafe.sbt.packager.docker.DockerPlugin.autoImport.{Docker, dockerExposedPorts, dockerUpdateLatest}
+import sbt.Keys._
 import sbt._
-import Keys._
-
-import com.typesafe.sbt.packager.Keys.packageName
-import com.typesafe.sbt.packager.docker.DockerPlugin.autoImport.{dockerExposedPorts, dockerUpdateLatest}
-import com.typesafe.sbt.packager.docker.DockerPlugin.autoImport.Docker
 
 object BuildSettings {
 
@@ -28,7 +26,17 @@ object BuildSettings {
   )
 
   lazy val dockerSettings =
-    Seq(packageName in Docker := "snowplow/sqs2kinesis", dockerExposedPorts ++= Seq(8080), dockerUpdateLatest := true)
+    Seq(
+      dockerUsername := Some("snowplow"),
+      packageName in Docker := "sqs2kinesis",
+      dockerExposedPorts ++= Seq(8080),
+      dockerUpdateLatest := true,
+      dockerBaseImage := "snowplow/base-debian:0.2.2",
+      maintainer in Docker := "Snowplow Analytics Ltd. <support@snowplowanalytics.com>",
+      daemonUser in Docker := "snowplow",
+      daemonUserUid in Docker := None,
+      defaultLinuxInstallLocation in Docker := "/home/snowplow"
+    )
 
   lazy val resolverSettings =
     resolvers ++= Seq(
@@ -49,9 +57,9 @@ object BuildSettings {
     ),
     javacOptions := Seq(
       "-source",
-      "1.8",
+      "11",
       "-target",
-      "1.8",
+      "11",
       "-Xlint"
     )
   )
