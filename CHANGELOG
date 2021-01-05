@@ -1,3 +1,11 @@
+Version 0.2.0 (2021-01-05)
+--------------------------
+Extend copyright to 2021 (#13)
+Make the use of Sentry optional (#7)
+Bump sbt to 1.4.5 (#12)
+Migrate to JDK 11 (#11)
+Migrate to GitHub Actions (#8)
+
 Version 0.1.0 (2020-08-19)
 --------------------------
-Read from sqs, write to Kinesis (#3) 
+Read from sqs, write to Kinesis (#3)
