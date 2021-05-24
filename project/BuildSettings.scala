@@ -38,11 +38,6 @@ object BuildSettings {
       defaultLinuxInstallLocation in Docker := "/home/snowplow"
     )
 
-  lazy val resolverSettings =
-    resolvers ++= Seq(
-      "Sonatype OSS Snapshots".at("https://oss.sonatype.org/content/repositories/snapshots/")
-    )
-
   lazy val compilerSettings = Seq[Setting[_]](
     scalacOptions := Seq(
       "-deprecation",
