@@ -17,6 +17,8 @@ lazy val root = project
   .settings(BuildSettings.projectSettings)
   .settings(BuildSettings.compilerSettings)
   .settings(BuildSettings.dockerSettings)
+  .settings(BuildSettings.assemblySettings)
+  .settings(BuildSettings.dynVerSettings)
   .settings(
     libraryDependencies ++= Seq(
       Dependencies.awsSqsSdk,

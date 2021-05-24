@@ -13,6 +13,8 @@
 
 import com.typesafe.sbt.packager.Keys._
 import com.typesafe.sbt.packager.docker.DockerPlugin.autoImport.{Docker, dockerExposedPorts, dockerUpdateLatest}
+import sbtassembly.AssemblyPlugin.autoImport._
+import sbtdynver.DynVerPlugin.autoImport._
 import sbt.Keys._
 import sbt._
 
@@ -20,7 +22,6 @@ object BuildSettings {
 
   lazy val projectSettings = Seq(
     name := "sqs2kinesis",
-    version := "0.2.0",
     organization := "com.snowplowanalytics",
     scalaVersion := "2.13.1"
   )
@@ -58,4 +59,19 @@ object BuildSettings {
       "-Xlint"
     )
   )
+
+  lazy val assemblySettings = Seq(
+    assemblyJarName in assembly := { s"${name.value}-${version.value}.jar" },
+    assemblyMergeStrategy in assembly := {
+      case x if x.endsWith("module-info.class") => MergeStrategy.first
+      case x =>
+        val oldStrategy = (assembly / assemblyMergeStrategy).value
+        oldStrategy(x)
+    }
+  )
+
+  lazy val dynVerSettings = Seq(
+    ThisBuild / dynverVTagPrefix := false, // Otherwise git tags required to have v-prefix
+    ThisBuild / dynverSeparator := "-" // to be compatible with docker
+    )
 }
