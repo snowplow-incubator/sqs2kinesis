@@ -16,7 +16,6 @@ lazy val root = project
   .enablePlugins(JavaAppPackaging, DockerPlugin)
   .settings(BuildSettings.projectSettings)
   .settings(BuildSettings.compilerSettings)
-  .settings(BuildSettings.resolverSettings)
   .settings(BuildSettings.dockerSettings)
   .settings(
     libraryDependencies ++= Seq(
@@ -24,7 +23,6 @@ lazy val root = project
       Dependencies.awsKinesisSdk,
       Dependencies.akkaStream,
       Dependencies.alpakkaSqs,
-      Dependencies.alpakkaKinesis,
       Dependencies.scalaLogging,
       Dependencies.config,
       Dependencies.cbor,

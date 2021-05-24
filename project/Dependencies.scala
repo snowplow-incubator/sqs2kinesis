@@ -30,7 +30,6 @@ object Dependencies {
   val awsKinesisSdk  = "com.amazonaws"                    % "aws-java-sdk-kinesis"         % V.awsSdk
   val akkaStream     = "com.typesafe.akka"                %% "akka-stream"                 % V.akka
   val alpakkaSqs     = "com.lightbend.akka"               %% "akka-stream-alpakka-sqs"     % V.alpakka
-  val alpakkaKinesis = "com.lightbend.akka"               %% "akka-stream-alpakka-kinesis" % V.alpakka
   val scalaLogging   = "com.typesafe.scala-logging"       %% "scala-logging"               % V.scalaLogging
   val config         = "com.typesafe"                     % "config"                       % V.config
   val cbor           = "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor"      % V.cbor
