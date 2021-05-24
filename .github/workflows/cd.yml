@@ -40,3 +40,20 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - run: sbt docker:publish
+
+      - name: Get current version
+        id: ver
+        run: echo "::set-output name=tag::${GITHUB_REF#refs/tags/}"
+      - name: Assemble fat jar
+        run: sbt "set assembly / test := {}; assembly"
+      - name: Create GitHub release and attach artifacts
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          prerelease: ${{ contains(steps.ver.outputs.tag, 'rc') }}
+          name: Version ${{ steps.ver.outputs.tag }}
+          tag_name: ${{ steps.ver.outputs.tag }}
+          files: |
+            target/scala-2.13/sqs2kinesis-${{ steps.ver.outputs.tag }}.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
