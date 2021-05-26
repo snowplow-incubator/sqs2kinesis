@@ -13,12 +13,13 @@
 
 lazy val root = project
   .in(file("."))
-  .enablePlugins(JavaAppPackaging, DockerPlugin)
+  .enablePlugins(JavaAppPackaging, DockerPlugin, BuildInfoPlugin)
   .settings(BuildSettings.projectSettings)
   .settings(BuildSettings.compilerSettings)
   .settings(BuildSettings.dockerSettings)
   .settings(BuildSettings.assemblySettings)
   .settings(BuildSettings.dynVerSettings)
+  .settings(BuildSettings.buildInfoSettings)
   .settings(
     libraryDependencies ++= Seq(
       Dependencies.awsSqsSdk,
@@ -29,6 +30,7 @@ lazy val root = project
       Dependencies.config,
       Dependencies.cbor,
       Dependencies.sentry,
+      Dependencies.badRows,
       Dependencies.logback,
       Dependencies.specs2
     )
