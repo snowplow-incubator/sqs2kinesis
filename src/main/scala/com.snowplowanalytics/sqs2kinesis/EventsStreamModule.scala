@@ -13,31 +13,37 @@
 
 package com.snowplowanalytics.sqs2kinesis
 
-import com.github.matsluni.akkahttpspi.AkkaHttpClient
-import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.services.sqs.model.Message
-import com.amazonaws.services.kinesis.{AmazonKinesisAsync, AmazonKinesisAsyncClientBuilder}
-import com.amazonaws.services.kinesis.model.PutRecordsRequest
-import com.amazonaws.services.kinesis.model.PutRecordsRequestEntry
-import java.nio.ByteBuffer
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl._
 import akka.stream.alpakka.sqs.scaladsl.{SqsAckFlow, SqsSource}
 import akka.stream.alpakka.sqs.{MessageAction, MessageAttributeName, SqsSourceSettings}
-import akka.stream.{ActorAttributes, Supervision}
-import akka.NotUsed
+import cats.data.NonEmptyList
+import cats.syntax.either._
+import com.github.matsluni.akkahttpspi.AkkaHttpClient
+import com.amazonaws.services.kinesis.{AmazonKinesisAsync, AmazonKinesisAsyncClientBuilder}
+import com.amazonaws.services.kinesis.model.{PutRecordsRequest, PutRecordsRequestEntry}
 import com.typesafe.scalalogging.Logger
+import software.amazon.awssdk.services.sqs.SqsAsyncClient
+import software.amazon.awssdk.services.sqs.model.Message
+
+import com.snowplowanalytics.snowplow.badrows.{BadRow, Failure, Payload, Processor}
+
 import java.util.UUID
-import java.io.PrintStream
-import java.io.ByteArrayOutputStream
+import java.time.Instant
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.ByteBuffer
 
 import scala.concurrent.duration.DurationLong
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
+import scala.util.Random
 
 object EventsStreamModule {
 
   private val logger = Logger[EventsStreamModule.type]
+
+  val processor: Processor = Processor(generated.BuildInfo.name, generated.BuildInfo.version)
 
   def runStream(config: Sqs2KinesisConfig)(implicit system: ActorSystem) = {
 
@@ -55,24 +61,31 @@ object EventsStreamModule {
       client
     }
 
-    val decider: Supervision.Decider = { e =>
-      logger.error("Error in stream", e)
-      Supervision.Resume
-    }
-
-    sqsSource(config)
-      .via(sqsMsg2kinesisMsg)
-      .via(Batcher.batch(
+    val goodSink =
+      Batcher.batch[ParsedMsg](
         keepAlive          = 1.second,
         maxSize            = MaxKinesisBatch,
         maxWeight          = MaxKinesisBytesPerRequest,
         toWeight           = {m => m.bytes.size + m.key.getBytes.size}
-      ))
-      .via(kinesisFlow(config, kinesisClient))
-      .alsoTo(confirmSqsSink(config))
-      .alsoTo(printProgress)
-      .toMat(Sink.ignore)(Keep.right)
-      .withAttributes(ActorAttributes.supervisionStrategy(decider))
+      )
+      .via(kinesisFlow(config.goodStreamName, kinesisClient))
+      .to(confirmSqsSink(config))
+
+    val badSink =
+      Batcher.batch[ParsedMsg](
+        keepAlive          = 1.second,
+        maxSize            = MaxKinesisBatch,
+        maxWeight          = MaxKinesisBytesPerRequest,
+        toWeight           = {m => m.bytes.size + m.key.getBytes.size}
+      )
+      .via(kinesisFlow(config.badStreamName, kinesisClient))
+      .to(confirmSqsSink(config))
+
+    sqsSource(config)
+      .via(sqsMsg2kinesisMsg)
+      .alsoTo(Flow[Either[ParsedMsg, ParsedMsg]].mapConcat(_.toSeq).to(goodSink))
+      .alsoTo(Flow[Either[ParsedMsg, ParsedMsg]].mapConcat(_.left.toSeq).to(badSink))
+      .to(printProgress)
       .run()
   }
 
@@ -90,36 +103,40 @@ object EventsStreamModule {
   case class ParsedMsg(original: Message, key: String, bytes: Array[Byte])
 
   /** A flow that base64-decodes sqs messages. It ignores messages if they cannot be parsed */
-  val sqsMsg2kinesisMsg: Flow[Message, ParsedMsg, NotUsed] =
+  val sqsMsg2kinesisMsg: Flow[Message, Either[ParsedMsg, ParsedMsg], NotUsed] =
     Flow[Message]
       .map { msg =>
         logger.debug(s"Received message ${msg.messageId}")
-        val decoded  = java.util.Base64.getDecoder.decode(msg.body)
-        val maybeKey = Option(msg.messageAttributes().get(KinesisKey)).map(_.stringValue())
-        val key = maybeKey.getOrElse {
-          val randomKey = UUID.randomUUID().toString
-          logger.warn(s"Kinesis key for sqs message ${msg.messageId()} not found, random key generated: $randomKey")
-          randomKey
+        Either.catchNonFatal(java.util.Base64.getDecoder.decode(msg.body)) match {
+          case Right(decoded) =>
+            val maybeKey = Option(msg.messageAttributes().get(KinesisKey)).map(_.stringValue())
+            val key = maybeKey.getOrElse {
+              val randomKey = UUID.randomUUID().toString
+              logger.warn(s"Kinesis key for sqs message ${msg.messageId()} not found, random key generated: $randomKey")
+              randomKey
+            }
+            Right(ParsedMsg(msg, key, decoded))
+          case Left(e) =>
+            logger.error("Error decoding sqs message. Message will be sent to bad row stream.", e)
+            val failure = Failure.GenericFailure(Instant.now(), NonEmptyList.one("Invalid base64 encoded SQS message"))
+            val payload = Payload.RawPayload(msg.body)
+            val badRow = BadRow.GenericError(processor, failure, payload)
+            Left(ParsedMsg(msg, Random.nextInt.toString, badRow.compact.getBytes(UTF_8)))
         }
-        Some(ParsedMsg(msg, key, decoded))
-      }.recover {
-        case NonFatal(e) =>
-          logger.error("Error decoding sqs message. Message will be ignored and not acked.", e)
-          None
-      }.mapConcat(_.toSeq)
+      }
 
   def toPutRecordReqEntry(msg: ParsedMsg): PutRecordsRequestEntry = {
       new PutRecordsRequestEntry().withPartitionKey(msg.key).withData(ByteBuffer.wrap(msg.bytes))
   }
 
   /** A Flow that tries to send a batch of messages to kinesis. Any failures in the batch will be retried up to 5 times. */
-  def kinesisFlow(config: Sqs2KinesisConfig, kinesisClient: AmazonKinesisAsync): Flow[Vector[ParsedMsg], Message, NotUsed] = {
+  def kinesisFlow(streamName: String, kinesisClient: AmazonKinesisAsync): Flow[Vector[ParsedMsg], Message, NotUsed] = {
 
     // The innter flow, which must be retried on error.
     val inner = Flow[(Vector[ParsedMsg], Vector[ParsedMsg])]
       .map { case (todo, complete) =>
         val req = new PutRecordsRequest()
-          .withStreamName(config.kinesisStreamName)
+          .withStreamName(streamName)
           .withRecords(todo.map(toPutRecordReqEntry).asJavaCollection)
         try {
           val results = kinesisClient.putRecords(req).getRecords.asScala.toList
@@ -138,13 +155,19 @@ object EventsStreamModule {
         case (_, (_, Vector())) =>
           None
         case (_, (successes, failures)) =>
-          logger.error(s"Got ${failures.size} failures and ${successes.size} successes writing to kinesis. Failures will be retried.")
+          logger.error(
+            s"Got ${failures.size} failures and ${successes.size} successes writing to stream ${config.streamName}. Failures will be retried."
+          )
           Some((failures, successes))
-      }).mapConcat { case (successes, failures) =>
-        if (failures.nonEmpty)
-          logger.error(s"Got ${failures.size} failures and ${successes.size} successes writing to kinesis. Giving up on failures because max retries exceeded. Failures will not be acked to sqs.")
-        logger.debug(s"Successfully wrote ${successes.size} messages to kinesis")
-        successes.map(_.original)
+      })
+      .mapConcat {
+        case (successes, failures) =>
+          if (failures.nonEmpty)
+            logger.error(
+              s"Got ${failures.size} failures and ${successes.size} successes writing to stream ${config.streamName}. Giving up on failures because max retries exceeded. Failures will not be acked to sqs."
+            )
+          logger.debug(s"Successfully wrote ${successes.size} messages to kinesis stream ${config.streamName}")
+          successes.map(_.original)
       }
   }
 
