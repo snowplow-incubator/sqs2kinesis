@@ -15,6 +15,7 @@ import com.typesafe.sbt.packager.Keys._
 import com.typesafe.sbt.packager.docker.DockerPlugin.autoImport.{Docker, dockerExposedPorts, dockerUpdateLatest}
 import sbtassembly.AssemblyPlugin.autoImport._
 import sbtdynver.DynVerPlugin.autoImport._
+import sbtbuildinfo.BuildInfoPlugin.autoImport._
 import sbt.Keys._
 import sbt._
 
@@ -74,4 +75,9 @@ object BuildSettings {
     ThisBuild / dynverVTagPrefix := false, // Otherwise git tags required to have v-prefix
     ThisBuild / dynverSeparator := "-" // to be compatible with docker
     )
+
+  lazy val buildInfoSettings = Seq(
+    buildInfoKeys := Seq[BuildInfoKey](name, version),
+    buildInfoPackage := "com.snowplowanalytics.sqs2kinesis.generated"
+  )
 }

@@ -26,12 +26,14 @@ object Main extends App with LazyLogging {
     // lack of one of those settings should throw an exception and stop the application
     val conf              = ConfigFactory.load().getConfig("sqs2kinesis")
     val sqsQueue          = conf.getString("sqs-queue")
-    val kinesisStreamName = conf.getString("kinesis-stream-name")
+    val goodStreamName    = conf.getString("kinesis-good-stream-name")
+    val badStreamName     = conf.getString("kinesis-bad-stream-name")
     val sentryDsn         = Try(conf.getString("sentry-dsn")).toOption
 
     val config = Sqs2KinesisConfig(
       sqsQueue,
-      kinesisStreamName,
+      goodStreamName,
+      badStreamName,
       sentryDsn
     )
     logger.info(s"config: $config")
