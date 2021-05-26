@@ -15,6 +15,7 @@ package com.snowplowanalytics.sqs2kinesis
 
 case class Sqs2KinesisConfig(
   sqsQueue: String,
-  kinesisStreamName: String,
+  goodStreamName: String,
+  badStreamName: String,
   sentryDsn: Option[String]
 )
