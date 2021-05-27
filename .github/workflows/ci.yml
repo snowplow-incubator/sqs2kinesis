@@ -16,3 +16,7 @@ jobs:
           java-version: 11
 
       - run: sbt clean test
+
+      - name: Check Scala formatting
+        if: ${{ always() }}
+        run: sbt scalafmtCheckAll

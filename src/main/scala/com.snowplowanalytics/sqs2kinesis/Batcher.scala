@@ -19,19 +19,21 @@ import scala.concurrent.duration.FiniteDuration
 object Batcher {
 
   /** Putting messages into batches, not exceeding size constraints
-   *
-   *  @param keepAlive Forces batches to get emitted early even if batch is not full.
-   *  @param maxSize The maximum number of elements allowed in a batch
-   *  @param maxWeight The maximum "weight" of an element. For example, this could be it's size in bytes.
-   *  @param toWeight How to calculate the weight of an element
-   *  @return A Flow that emits batches
-   */
+    *
+    *  @param keepAlive Forces batches to get emitted early even if batch is not full.
+    *  @param maxSize The maximum number of elements allowed in a batch
+    *  @param maxWeight The maximum "weight" of an element. For example, this could be it's size in bytes.
+    *  @param toWeight How to calculate the weight of an element
+    *  @return A Flow that emits batches
+    */
   def batch[T](
-      keepAlive: FiniteDuration,
-      maxSize: Int,
-      maxWeight: Int,
-      toWeight: T => Int): Flow[T, Vector[T], NotUsed] =
-      Flow[T].map(m => Message(m, toWeight(m)))
+    keepAlive: FiniteDuration,
+    maxSize: Int,
+    maxWeight: Int,
+    toWeight: T => Int
+  ): Flow[T, Vector[T], NotUsed] =
+    Flow[T]
+      .map(m => Message(m, toWeight(m)))
       .keepAlive(keepAlive, () => Flush)
       .via(scanFlush(State[T](Vector.empty, 0)) {
         case (State(acc, _), Flush) =>
@@ -47,18 +49,18 @@ object Batcher {
       })
       .filter(_.nonEmpty)
 
-  private sealed trait Action[+T]
+  sealed private trait Action[+T]
   private object Flush extends Action[Nothing]
   private case class Message[T](value: T, weight: Int) extends Action[T]
 
   private case class State[T](acc: Vector[T], weight: Int)
 
-
   def scanFlush[S, In, Out](zero: S)(f: (S, In) => (S, Option[Out])): Flow[In, Out, NotUsed] =
     Flow[In]
       .scan((zero, Option.empty[Out])) {
         case ((state, _), next) => f(state, next)
-      }.collect {
+      }
+      .collect {
         case (_, Some(out)) => out
       }
 
