@@ -11,11 +11,29 @@
  * See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
  */
 
-package com.snowplowanalytics.sqs2kinesis
+package com.snowplowanalytics.sqs2kinesis.config
 
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto._
+
+/**
+  * Parsed HOCON configuration file
+  *
+  * @param sqsQueue The input sqs queue
+  * @param goodStreamName Output Kinesis stream for base64-decoded sqs messages
+  * @param badStreamName Output Kinesis stream for sqs messages that could not be base64-decoded
+  * @param sentryDsn Enable sentry monitoring
+  */
 case class Sqs2KinesisConfig(
   sqsQueue: String,
   goodStreamName: String,
   badStreamName: String,
   sentryDsn: Option[String]
 )
+
+object Sqs2KinesisConfig {
+
+  implicit val decoder: Decoder[Sqs2KinesisConfig] = deriveDecoder[Sqs2KinesisConfig]
+  implicit val encoder: Encoder[Sqs2KinesisConfig] = deriveEncoder[Sqs2KinesisConfig]
+
+}
