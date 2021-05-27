@@ -22,7 +22,6 @@ object Dependencies {
     val config       = "1.4.0"
     val logback      = "1.2.3"
     val specs2       = "4.7.0"
-    val cbor         = "2.9.10"
     val sentry       = "1.7.30"
     val badRows      = "2.1.0"
   }
@@ -34,7 +33,6 @@ object Dependencies {
   val scalaLogging   = "com.typesafe.scala-logging"       %% "scala-logging"               % V.scalaLogging
   val badRows        = "com.snowplowanalytics"            %% "snowplow-badrows"            % V.badRows
   val config         = "com.typesafe"                     % "config"                       % V.config
-  val cbor           = "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor"      % V.cbor
   val sentry         = "io.sentry"                        % "sentry-logback"               % V.sentry
   val logback        = "ch.qos.logback"                   % "logback-classic"              % V.logback % Runtime
   val specs2         = "org.specs2"                       %% "specs2-core"                 % V.specs2 % Test
