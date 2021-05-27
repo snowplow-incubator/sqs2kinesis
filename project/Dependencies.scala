@@ -16,8 +16,8 @@ object Dependencies {
 
   object V {
     val awsSdk       = "1.11.762"
-    val alpakka      = "1.1.2"
-    val akka         = "2.6.3"
+    val alpakka      = "3.0.2"
+    val akka         = "2.6.14"
     val scalaLogging = "3.9.2"
     val config       = "1.4.0"
     val logback      = "1.2.3"
@@ -26,7 +26,6 @@ object Dependencies {
     val badRows      = "2.1.0"
   }
 
-  val awsSqsSdk      = "com.amazonaws"                    % "aws-java-sdk-sqs"             % V.awsSdk
   val awsKinesisSdk  = "com.amazonaws"                    % "aws-java-sdk-kinesis"         % V.awsSdk
   val akkaStream     = "com.typesafe.akka"                %% "akka-stream"                 % V.akka
   val alpakkaSqs     = "com.lightbend.akka"               %% "akka-stream-alpakka-sqs"     % V.alpakka

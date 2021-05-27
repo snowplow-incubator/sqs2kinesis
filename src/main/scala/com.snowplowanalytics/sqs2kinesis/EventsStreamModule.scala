@@ -18,6 +18,7 @@ import akka.actor.ActorSystem
 import akka.stream.scaladsl._
 import akka.stream.alpakka.sqs.scaladsl.{SqsAckFlow, SqsSource}
 import akka.stream.alpakka.sqs.{MessageAction, MessageAttributeName, SqsSourceSettings}
+import akka.stream.RestartSettings
 import cats.data.NonEmptyList
 import cats.syntax.either._
 import com.github.matsluni.akkahttpspi.AkkaHttpClient
@@ -99,7 +100,7 @@ object EventsStreamModule {
 
   /** A source that reads messages from sqs and retries if read was unsuccessful */
   def sqsSource(config: Sqs2KinesisConfig)(implicit client: SqsAsyncClient): Source[Message, NotUsed] =
-    RestartSource.withBackoff(500.millis, 1.second, 0.1) { () =>
+    RestartSource.withBackoff(RestartSettings(500.millis, 1.second, 0.1)) { () =>
       SqsSource(
         config.sqsQueue,
         SqsSourceSettings.Defaults.withMessageAttribute(MessageAttributeName(KinesisKey))
