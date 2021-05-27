@@ -22,9 +22,10 @@ import akka.stream.RestartSettings
 import cats.data.NonEmptyList
 import cats.syntax.either._
 import com.github.matsluni.akkahttpspi.AkkaHttpClient
-import com.amazonaws.services.kinesis.{AmazonKinesisAsync, AmazonKinesisAsyncClientBuilder}
-import com.amazonaws.services.kinesis.model.{PutRecordsRequest, PutRecordsRequestEntry}
 import com.typesafe.scalalogging.Logger
+import software.amazon.awssdk.core.SdkBytes
+import software.amazon.awssdk.services.kinesis.KinesisAsyncClient
+import software.amazon.awssdk.services.kinesis.model.{PutRecordsRequest, PutRecordsRequestEntry}
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.Message
 
@@ -33,10 +34,11 @@ import com.snowplowanalytics.snowplow.badrows.{BadRow, Failure, Payload, Process
 import java.util.UUID
 import java.time.Instant
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.ByteBuffer
 
 import scala.concurrent.duration.DurationLong
+import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters._
+import scala.jdk.FutureConverters._
 import scala.util.control.NonFatal
 import scala.util.Random
 
@@ -48,17 +50,19 @@ object EventsStreamModule {
 
   def runStream(config: Sqs2KinesisConfig)(implicit system: ActorSystem) = {
 
-    implicit val sqsClient: SqsAsyncClient = {
-      val client = SqsAsyncClient.builder().httpClient(AkkaHttpClient.builder().withActorSystem(system).build()).build()
+    val httpClient = AkkaHttpClient.builder().withActorSystem(system).build()
 
+    implicit val executionContext: ExecutionContext = system.dispatcher
+
+    implicit val sqsClient: SqsAsyncClient = {
+      val client = SqsAsyncClient.builder().httpClient(httpClient).build()
       system.registerOnTermination(client.close())
       client
     }
 
-    implicit val kinesisClient: AmazonKinesisAsync = {
-      val client = AmazonKinesisAsyncClientBuilder.standard().build()
-
-      system.registerOnTermination(client.shutdown())
+    val kinesisClient: KinesisAsyncClient = {
+      val client = KinesisAsyncClient.builder().httpClient(httpClient).build()
+      system.registerOnTermination(client.close())
       client
     }
 
@@ -132,25 +136,31 @@ object EventsStreamModule {
     }
 
   def toPutRecordReqEntry(msg: ParsedMsg): PutRecordsRequestEntry =
-    new PutRecordsRequestEntry().withPartitionKey(msg.key).withData(ByteBuffer.wrap(msg.bytes))
+    PutRecordsRequestEntry.builder.partitionKey(msg.key).data(SdkBytes.fromByteArrayUnsafe(msg.bytes)).build
 
   /** A Flow that tries to send a batch of messages to kinesis. Any failures in the batch will be retried up to 5 times. */
-  def kinesisFlow(streamName: String, kinesisClient: AmazonKinesisAsync): Flow[Vector[ParsedMsg], Message, NotUsed] = {
+  def kinesisFlow(streamName: String, kinesisClient: KinesisAsyncClient)(
+    implicit ec: ExecutionContext
+  ): Flow[Vector[ParsedMsg], Message, NotUsed] = {
 
-    // The innter flow, which must be retried on error.
-    val inner = Flow[(Vector[ParsedMsg], Vector[ParsedMsg])].map {
+    // The inner flow, which must be retried on error.
+    val inner = Flow[(Vector[ParsedMsg], Vector[ParsedMsg])].mapAsync(1) {
       case (todo, complete) =>
         val req =
-          new PutRecordsRequest().withStreamName(streamName).withRecords(todo.map(toPutRecordReqEntry).asJavaCollection)
-        try {
-          val results               = kinesisClient.putRecords(req).getRecords.asScala.toList
-          val (successes, failures) = todo.zip(results).partition(_._2.getErrorMessage == null)
-          (complete ++ successes.map(_._1), failures.map(_._1))
-        } catch {
-          case NonFatal(e) =>
-            logger.error("Writing to kinesis failed with error", e)
-            (complete, todo)
-        }
+          PutRecordsRequest.builder.streamName(streamName).records(todo.map(toPutRecordReqEntry).asJavaCollection).build
+        kinesisClient
+          .putRecords(req)
+          .asScala
+          .map { resp =>
+            val results               = resp.records.asScala.toList
+            val (successes, failures) = todo.zip(results).partition(_._2.errorMessage == null)
+            (complete ++ successes.map(_._1), failures.map(_._1))
+          }
+          .recover {
+            case NonFatal(e) =>
+              logger.error("Writing to kinesis failed with error", e)
+              (complete, todo)
+          }
     }
 
     Flow[Vector[ParsedMsg]]
