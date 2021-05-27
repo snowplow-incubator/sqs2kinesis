@@ -15,7 +15,7 @@ import sbt._
 object Dependencies {
 
   object V {
-    val awsSdk       = "1.11.762"
+    val awsSdk       = "2.16.72"
     val alpakka      = "3.0.0"
     val akka         = "2.6.14"
     val scalaLogging = "3.9.2"
@@ -26,7 +26,7 @@ object Dependencies {
     val badRows      = "2.1.0"
   }
 
-  val awsKinesisSdk  = "com.amazonaws"                    % "aws-java-sdk-kinesis"         % V.awsSdk
+  val awsKinesisSdk  = "software.amazon.awssdk"           % "kinesis"                      % V.awsSdk
   val akkaStream     = "com.typesafe.akka"                %% "akka-stream"                 % V.akka
   val alpakkaSqs     = "com.lightbend.akka"               %% "akka-stream-alpakka-sqs"     % V.alpakka
   val scalaLogging   = "com.typesafe.scala-logging"       %% "scala-logging"               % V.scalaLogging

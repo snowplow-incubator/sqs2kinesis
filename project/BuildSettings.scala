@@ -65,6 +65,8 @@ object BuildSettings {
     assemblyJarName in assembly := { s"${name.value}-${version.value}.jar" },
     assemblyMergeStrategy in assembly := {
       case x if x.endsWith("module-info.class") => MergeStrategy.first
+      case x if x.endsWith("io.netty.versions.properties") => MergeStrategy.discard
+      case x if x.startsWith("codegen-resources/") => MergeStrategy.discard
       case x =>
         val oldStrategy = (assembly / assemblyMergeStrategy).value
         oldStrategy(x)
