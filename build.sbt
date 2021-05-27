@@ -20,14 +20,16 @@ lazy val root = project
   .settings(BuildSettings.assemblySettings)
   .settings(BuildSettings.dynVerSettings)
   .settings(BuildSettings.buildInfoSettings)
+  .settings(BuildSettings.addExampleConfToTestCp)
   .settings(
     libraryDependencies ++= Seq(
       Dependencies.awsKinesisSdk,
       Dependencies.akkaStream,
       Dependencies.alpakkaSqs,
       Dependencies.scalaLogging,
-      Dependencies.config,
       Dependencies.sentry,
+      Dependencies.decline,
+      Dependencies.circeConfig,
       Dependencies.badRows,
       Dependencies.logback,
       Dependencies.specs2

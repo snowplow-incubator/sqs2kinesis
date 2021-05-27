@@ -30,6 +30,7 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.Message
 
 import com.snowplowanalytics.snowplow.badrows.{BadRow, Failure, Payload, Processor}
+import com.snowplowanalytics.sqs2kinesis.config.Sqs2KinesisConfig
 
 import java.util.UUID
 import java.time.Instant
@@ -170,7 +171,7 @@ object EventsStreamModule {
           None
         case (_, (successes, failures)) =>
           logger.error(
-            s"Got ${failures.size} failures and ${successes.size} successes writing to stream ${config.streamName}. Failures will be retried."
+            s"Got ${failures.size} failures and ${successes.size} successes writing to stream ${streamName}. Failures will be retried."
           )
           Some((failures, successes))
       })
@@ -178,9 +179,9 @@ object EventsStreamModule {
         case (successes, failures) =>
           if (failures.nonEmpty)
             logger.error(
-              s"Got ${failures.size} failures and ${successes.size} successes writing to stream ${config.streamName}. Giving up on failures because max retries exceeded. Failures will not be acked to sqs."
+              s"Got ${failures.size} failures and ${successes.size} successes writing to stream ${streamName}. Giving up on failures because max retries exceeded. Failures will not be acked to sqs."
             )
-          logger.debug(s"Successfully wrote ${successes.size} messages to kinesis stream ${config.streamName}")
+          logger.debug(s"Successfully wrote ${successes.size} messages to kinesis stream ${streamName}")
           successes.map(_.original)
       }
   }
