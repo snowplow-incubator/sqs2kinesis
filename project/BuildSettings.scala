@@ -82,4 +82,10 @@ object BuildSettings {
     buildInfoKeys := Seq[BuildInfoKey](name, version),
     buildInfoPackage := "com.snowplowanalytics.sqs2kinesis.generated"
   )
+
+  lazy val addExampleConfToTestCp = Seq(
+    Test / unmanagedClasspath += {
+      baseDirectory.value / "config"
+    }
+  )
 }

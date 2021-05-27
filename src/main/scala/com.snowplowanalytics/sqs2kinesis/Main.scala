@@ -14,37 +14,27 @@
 package com.snowplowanalytics.sqs2kinesis
 
 import akka.actor.ActorSystem
-import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import io.sentry.Sentry
+import io.circe.syntax._
 
-import scala.util.Try
+import com.snowplowanalytics.sqs2kinesis.config.CliConfig
 
 object Main extends App with LazyLogging {
 
-  val sqs2KinesisConfig = {
-    // lack of one of those settings should throw an exception and stop the application
-    val conf           = ConfigFactory.load().getConfig("sqs2kinesis")
-    val sqsQueue       = conf.getString("sqs-queue")
-    val goodStreamName = conf.getString("kinesis-good-stream-name")
-    val badStreamName  = conf.getString("kinesis-bad-stream-name")
-    val sentryDsn      = Try(conf.getString("sentry-dsn")).toOption
+  CliConfig.parse(args.toIndexedSeq) match {
+    case Right(CliConfig(sqs2KinesisConfig, rawConfig)) =>
+      logger.info(sqs2KinesisConfig.asJson.noSpaces)
+      sqs2KinesisConfig.sentryDsn.foreach(Sentry.init)
 
-    val config = Sqs2KinesisConfig(
-      sqsQueue,
-      goodStreamName,
-      badStreamName,
-      sentryDsn
-    )
-    logger.info(s"config: $config")
-    config
+      implicit val system: ActorSystem = ActorSystem("sqs2kinesis", rawConfig)
+
+      EventsStreamModule.runStream(sqs2KinesisConfig)
+      HttpModule.runHttpServer("0.0.0.0", 8080) // HTTP server for health check
+
+    case Left(error) =>
+      println(error)
+      sys.exit(1)
   }
-
-  sqs2KinesisConfig.sentryDsn.foreach(Sentry.init)
-
-  implicit val system: ActorSystem = ActorSystem()
-
-  EventsStreamModule.runStream(sqs2KinesisConfig)
-  HttpModule.runHttpServer("0.0.0.0", 8080) // HTTP server for health check
 
 }

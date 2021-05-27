@@ -19,11 +19,12 @@ object Dependencies {
     val alpakka      = "3.0.2"
     val akka         = "2.6.14"
     val scalaLogging = "3.9.2"
-    val config       = "1.4.0"
     val logback      = "1.2.3"
     val specs2       = "4.7.0"
     val sentry       = "1.7.30"
     val badRows      = "2.1.0"
+    val decline      = "1.4.0"
+    val circeConfig  = "0.8.0"
   }
 
   val awsKinesisSdk  = "software.amazon.awssdk"           % "kinesis"                      % V.awsSdk
@@ -31,7 +32,8 @@ object Dependencies {
   val alpakkaSqs     = "com.lightbend.akka"               %% "akka-stream-alpakka-sqs"     % V.alpakka
   val scalaLogging   = "com.typesafe.scala-logging"       %% "scala-logging"               % V.scalaLogging
   val badRows        = "com.snowplowanalytics"            %% "snowplow-badrows"            % V.badRows
-  val config         = "com.typesafe"                     % "config"                       % V.config
+  val decline        = "com.monovore"                     %% "decline"                     % V.decline
+  val circeConfig    = "io.circe"                         %% "circe-config"                % V.circeConfig
   val sentry         = "io.sentry"                        % "sentry-logback"               % V.sentry
   val logback        = "ch.qos.logback"                   % "logback-classic"              % V.logback % Runtime
   val specs2         = "org.specs2"                       %% "specs2-core"                 % V.specs2 % Test
