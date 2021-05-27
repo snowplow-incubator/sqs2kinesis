@@ -28,7 +28,6 @@ lazy val root = project
       Dependencies.alpakkaSqs,
       Dependencies.scalaLogging,
       Dependencies.config,
-      Dependencies.cbor,
       Dependencies.sentry,
       Dependencies.badRows,
       Dependencies.logback,
