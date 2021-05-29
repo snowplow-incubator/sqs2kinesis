@@ -77,8 +77,8 @@ object EventsStreamModule {
             m.bytes.size + m.key.getBytes.size
           }
         )
-        .via(kinesisFlow(config.goodStreamName, kinesisClient))
-        .to(confirmSqsSink(config))
+        .via(kinesisFlow(config.output.good.streamName, kinesisClient))
+        .to(confirmSqsSink(config.input))
 
     val badSink =
       Batcher
@@ -90,10 +90,10 @@ object EventsStreamModule {
             m.bytes.size + m.key.getBytes.size
           }
         )
-        .via(kinesisFlow(config.badStreamName, kinesisClient))
-        .to(confirmSqsSink(config))
+        .via(kinesisFlow(config.output.bad.streamName, kinesisClient))
+        .to(confirmSqsSink(config.input))
 
-    sqsSource(config)
+    sqsSource(config.input)
       .via(sqsMsg2kinesisMsg)
       .alsoTo(Flow[Either[ParsedMsg, ParsedMsg]].mapConcat(_.toSeq).to(goodSink))
       .alsoTo(Flow[Either[ParsedMsg, ParsedMsg]].mapConcat(_.left.toSeq).to(badSink))
@@ -104,10 +104,10 @@ object EventsStreamModule {
   val KinesisKey = "kinesisKey"
 
   /** A source that reads messages from sqs and retries if read was unsuccessful */
-  def sqsSource(config: Sqs2KinesisConfig)(implicit client: SqsAsyncClient): Source[Message, NotUsed] =
+  def sqsSource(config: Sqs2KinesisConfig.SqsConfig)(implicit client: SqsAsyncClient): Source[Message, NotUsed] =
     RestartSource.withBackoff(RestartSettings(500.millis, 1.second, 0.1)) { () =>
       SqsSource(
-        config.sqsQueue,
+        config.queue,
         SqsSourceSettings.Defaults.withMessageAttribute(MessageAttributeName(KinesisKey))
       )
     }
@@ -188,10 +188,10 @@ object EventsStreamModule {
   }
 
   /** A Flow that tries to ack a sqs message. Upon failure, the ack will be retried up to 5 times */
-  def confirmSqsSink(config: Sqs2KinesisConfig)(implicit client: SqsAsyncClient): Sink[Message, NotUsed] = {
+  def confirmSqsSink(config: Sqs2KinesisConfig.SqsConfig)(implicit client: SqsAsyncClient): Sink[Message, NotUsed] = {
     val inner = Flow[Message]
       .map(MessageAction.Delete(_))
-      .via(SqsAckFlow(config.sqsQueue))
+      .via(SqsAckFlow(config.queue))
       .map(_ => Option.empty[Throwable])
       .recover {
         case NonFatal(e) => Some(e)

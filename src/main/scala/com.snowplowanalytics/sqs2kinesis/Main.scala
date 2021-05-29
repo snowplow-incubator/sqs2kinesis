@@ -25,7 +25,7 @@ object Main extends App with LazyLogging {
   CliConfig.parse(args.toIndexedSeq) match {
     case Right(CliConfig(sqs2KinesisConfig, rawConfig)) =>
       logger.info(sqs2KinesisConfig.asJson.noSpaces)
-      sqs2KinesisConfig.sentryDsn.foreach(Sentry.init)
+      sqs2KinesisConfig.monitoring.flatMap(_.sentry).foreach(s => Sentry.init(s.dsn))
 
       implicit val system: ActorSystem = ActorSystem("sqs2kinesis", rawConfig)
 

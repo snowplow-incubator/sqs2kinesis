@@ -16,15 +16,16 @@ import java.nio.file.Paths
 
 import org.specs2.mutable.Specification
 
+import Sqs2KinesisConfig._
+
 class CliConfigSpec extends Specification {
   "parse" should {
     "parse valid HOCON file with path provided" in {
       val configPath = Paths.get(getClass.getResource("/config.hocon.sample").toURI)
       val expected = Sqs2KinesisConfig(
-        "https://sqs.eu-central-1.amazonaws.com/000000000000/test-topic",
-        "test-stream-payloads",
-        "test-stream-bad",
-        Some("http://sentry.acme.com")
+        SqsConfig("https://sqs.eu-central-1.amazonaws.com/000000000000/test-topic"),
+        Output(KinesisConfig("test-stream-payloads"), KinesisConfig("test-stream-bad")),
+        Some(Monitoring(Some(Sentry("http://sentry.acme.com"))))
       )
       CliConfig.parse(Seq("--config", configPath.toString)).map(_.app) must beRight(expected)
     }
