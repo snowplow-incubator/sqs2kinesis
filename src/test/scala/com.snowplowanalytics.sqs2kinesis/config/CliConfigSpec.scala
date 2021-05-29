@@ -12,6 +12,7 @@
  */
 package com.snowplowanalytics.sqs2kinesis.config
 
+import scala.concurrent.duration.DurationLong
 import java.nio.file.Paths
 
 import org.specs2.mutable.Specification
@@ -23,8 +24,18 @@ class CliConfigSpec extends Specification {
     "parse valid HOCON file with path provided" in {
       val configPath = Paths.get(getClass.getResource("/config.hocon.sample").toURI)
       val expected = Sqs2KinesisConfig(
-        SqsConfig("https://sqs.eu-central-1.amazonaws.com/000000000000/test-topic"),
-        Output(KinesisConfig("test-stream-payloads"), KinesisConfig("test-stream-bad")),
+        SqsConfig(
+          "https://sqs.eu-central-1.amazonaws.com/000000000000/test-topic",
+          "kinesisKey",
+          500.millis,
+          1.second,
+          0.1,
+          5
+        ),
+        Output(
+          KinesisConfig("test-stream-payloads", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5),
+          KinesisConfig("test-stream-bad", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5)
+        ),
         Some(Monitoring(Some(Sentry("http://sentry.acme.com"))))
       )
       CliConfig.parse(Seq("--config", configPath.toString)).map(_.app) must beRight(expected)
