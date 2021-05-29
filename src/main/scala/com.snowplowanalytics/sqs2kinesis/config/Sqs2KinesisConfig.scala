@@ -15,6 +15,8 @@ package com.snowplowanalytics.sqs2kinesis.config
 
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto._
+import io.circe.config.syntax._
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * Parsed HOCON configuration file
@@ -31,11 +33,52 @@ case class Sqs2KinesisConfig(
 
 object Sqs2KinesisConfig {
 
-  case class SqsConfig(queue: String)
-  case class KinesisConfig(streamName: String)
+  /** Configure the input sqs queue
+    *
+    *  @param queue The queue url
+    *  @param kinesisKey The sqs metadata key that tells us the output key for kinesis messages
+    *  @param minBackoff Minimum backoff before retrying after failure
+    *  @param maxBackoff Maximum backoff before retrying after failure
+    *  @param randomFactor Random factor when calculating backoff time after failure
+    *  @param maxRetries Maximum number of retries after failure to ack (delete) a message
+    */
+  case class SqsConfig(
+    queue: String,
+    kinesisKey: String,
+    minBackoff: FiniteDuration,
+    maxBackoff: FiniteDuration,
+    randomFactor: Double,
+    maxRetries: Int
+  )
+
+  /** Configure the output kinesis stream
+    *
+    *  @param streamName The stream name
+    *  @param maxKinesisBytesPerRequest The maximum combined size of a PutRecordsRequest
+    *  @param maxKinesisBatch The maximum number of records in a PutRecordsRequest
+    *  @param keepAlive The maximum time to wait before emitting an incomplete PutRecordsRequest
+    *  @param minBackoff Minimum backoff before retrying after failure
+    *  @param maxBackoff Maximum backoff before retrying after failure
+    *  @param randomFactor Random factor when calculating backoff time after failure
+    *  @param maxRetries Maximum number of retries after failure
+    */
+  case class KinesisConfig(
+    streamName: String,
+    maxKinesisBytesPerRequest: Int,
+    maxKinesisBatch: Int,
+    keepAlive: FiniteDuration,
+    minBackoff: FiniteDuration,
+    maxBackoff: FiniteDuration,
+    randomFactor: Double,
+    maxRetries: Int
+  )
+
   case class Output(good: KinesisConfig, bad: KinesisConfig)
   case class Sentry(dsn: String)
   case class Monitoring(sentry: Option[Sentry])
+
+  implicit val finiteDurationEncoder: Encoder[FiniteDuration] =
+    implicitly[Encoder[String]].contramap(_.toString)
 
   implicit val sqsDecoder: Decoder[SqsConfig] = deriveDecoder[SqsConfig]
   implicit val sqsEncoder: Encoder[SqsConfig] = deriveEncoder[SqsConfig]
