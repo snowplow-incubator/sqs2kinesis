@@ -19,19 +19,38 @@ import io.circe.generic.semiauto._
 /**
   * Parsed HOCON configuration file
   *
-  * @param sqsQueue The input sqs queue
-  * @param goodStreamName Output Kinesis stream for base64-decoded sqs messages
-  * @param badStreamName Output Kinesis stream for sqs messages that could not be base64-decoded
-  * @param sentryDsn Enable sentry monitoring
+  * @param input Configures the input sqs queue
+  * @param output Configures the output good and bad kinesis streams
+  * @param monitoring Configures monitoring. Currently just sentry.
   */
 case class Sqs2KinesisConfig(
-  sqsQueue: String,
-  goodStreamName: String,
-  badStreamName: String,
-  sentryDsn: Option[String]
+  input: Sqs2KinesisConfig.SqsConfig,
+  output: Sqs2KinesisConfig.Output,
+  monitoring: Option[Sqs2KinesisConfig.Monitoring]
 )
 
 object Sqs2KinesisConfig {
+
+  case class SqsConfig(queue: String)
+  case class KinesisConfig(streamName: String)
+  case class Output(good: KinesisConfig, bad: KinesisConfig)
+  case class Sentry(dsn: String)
+  case class Monitoring(sentry: Option[Sentry])
+
+  implicit val sqsDecoder: Decoder[SqsConfig] = deriveDecoder[SqsConfig]
+  implicit val sqsEncoder: Encoder[SqsConfig] = deriveEncoder[SqsConfig]
+
+  implicit val kinesisDecoder: Decoder[KinesisConfig] = deriveDecoder[KinesisConfig]
+  implicit val kinesisEncoder: Encoder[KinesisConfig] = deriveEncoder[KinesisConfig]
+
+  implicit val outputDecoder: Decoder[Output] = deriveDecoder[Output]
+  implicit val outputEncoder: Encoder[Output] = deriveEncoder[Output]
+
+  implicit val sentryDecoder: Decoder[Sentry] = deriveDecoder[Sentry]
+  implicit val sentryEncoder: Encoder[Sentry] = deriveEncoder[Sentry]
+
+  implicit val monitoringDecoder: Decoder[Monitoring] = deriveDecoder[Monitoring]
+  implicit val monitoringEncoder: Encoder[Monitoring] = deriveEncoder[Monitoring]
 
   implicit val decoder: Decoder[Sqs2KinesisConfig] = deriveDecoder[Sqs2KinesisConfig]
   implicit val encoder: Encoder[Sqs2KinesisConfig] = deriveEncoder[Sqs2KinesisConfig]
