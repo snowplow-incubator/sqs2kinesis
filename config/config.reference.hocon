@@ -1,0 +1,76 @@
+{
+  "input": {
+    "queue": "https://sqs.eu-central-1.amazonaws.com/000000000000/test-topic"
+
+    # Optional, the sqs message attribute that will be used to set the kinesis partition key
+    "kinesisKey": "kinesisKey"
+
+    # Settings for restarting after failure
+    minBackoff: 500 millis
+    maxBackoff: 5 seconds
+    randomFactor: 0.1
+    maxRetries: 5
+    maxRetriesWithin: 1 minute
+  }
+
+  "output": {
+
+    # Configure output kinesis stream for valid messages
+    "good": {
+      "streamName": "test-stream-payloads"
+
+      # Optional, the kinesis PutRecordsRequest will not exceed this size, default 5 MB
+      maxKinesisBytesPerRequest: 5000000
+      # Optional, the kinesis PutRecordsRequest will have no greater than this many records, default 500
+      maxKinesisBatch: 500
+      # Maximum time to wait before sending an incomplete PutRecordsRequest
+      keepAlive: 1 second
+
+      # Settings for retrying after kinesis failures
+      minBackoff: 500 millis
+      maxBackoff: 1 second
+      randomFactor: 0.1
+      maxRetries: 5
+    }
+
+    # Configure output kinesis stream for invalid messages
+    "bad": {
+      "streamName": "test-stream-bad"
+
+      # Optional, the kinesis PutRecordsRequest will not exceed this size, default 5 MB
+      maxKinesisBytesPerRequest: 5000000
+      # Optional, the kinesis PutRecordsRequest will have no greater than this many records, default 500
+      maxKinesisBatch: 500
+      # Maximum time to wait before sending an incomplete PutRecordsRequest
+      keepAlive: 1 second
+
+      # Settings for retrying after kinesis failures
+      minBackoff: 500 millis
+      maxBackoff: 1 second
+      randomFactor: 0.1
+      maxRetries: 5
+    }
+
+  }
+
+  "monitoring": {
+
+    # Optional, for tracking runtime exceptions
+    "sentry": {
+      "dsn": "http://sentry.acme.com"
+    }
+
+    # Optional, configure a health check end point
+    health: {
+      host: "0.0.0.0"
+      port: 8080
+    }
+  }
+
+  # Optional, any standard akka configurations to override the defaults.
+  # See https://doc.akka.io/docs/akka/current/general/configuration-reference.html
+  "akka": {
+    "loglevel": "INFO"
+  }
+
+}

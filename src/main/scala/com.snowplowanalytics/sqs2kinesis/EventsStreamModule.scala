@@ -67,60 +67,53 @@ object EventsStreamModule {
       client
     }
 
-    val goodSink =
-      Batcher
-        .batch[ParsedMsg](
-          keepAlive = 1.second,
-          maxSize   = MaxKinesisBatch,
-          maxWeight = MaxKinesisBytesPerRequest,
-          toWeight = { m =>
-            m.bytes.size + m.key.getBytes.size
-          }
-        )
-        .via(kinesisFlow(config.output.good.streamName, kinesisClient))
-        .to(confirmSqsSink(config.input))
-
-    val badSink =
-      Batcher
-        .batch[ParsedMsg](
-          keepAlive = 1.second,
-          maxSize   = MaxKinesisBatch,
-          maxWeight = MaxKinesisBytesPerRequest,
-          toWeight = { m =>
-            m.bytes.size + m.key.getBytes.size
-          }
-        )
-        .via(kinesisFlow(config.output.bad.streamName, kinesisClient))
-        .to(confirmSqsSink(config.input))
+    val goodSink = sink(config.output.good, config.input, kinesisClient)
+    val badSink  = sink(config.output.bad, config.input, kinesisClient)
 
     sqsSource(config.input)
-      .via(sqsMsg2kinesisMsg)
+      .via(sqsMsg2kinesisMsg(config.input))
       .alsoTo(Flow[Either[ParsedMsg, ParsedMsg]].mapConcat(_.toSeq).to(goodSink))
       .alsoTo(Flow[Either[ParsedMsg, ParsedMsg]].mapConcat(_.left.toSeq).to(badSink))
       .to(printProgress)
       .run()
   }
 
-  val KinesisKey = "kinesisKey"
+  /** Sink messages to kinesis in batches, and then ack each message to sqs */
+  def sink(
+    kinesisConfig: Sqs2KinesisConfig.KinesisConfig,
+    sqsConfig: Sqs2KinesisConfig.SqsConfig,
+    kinesisClient: KinesisAsyncClient
+  )(implicit ec: ExecutionContext, sqsClient: SqsAsyncClient): Sink[ParsedMsg, NotUsed] =
+    Batcher
+      .batch[ParsedMsg](
+        keepAlive = kinesisConfig.keepAlive,
+        maxSize   = kinesisConfig.maxKinesisBatch,
+        maxWeight = kinesisConfig.maxKinesisBytesPerRequest,
+        toWeight = { m =>
+          m.bytes.size + m.key.getBytes.size
+        }
+      )
+      .via(kinesisFlow(kinesisConfig, kinesisClient))
+      .to(confirmSqsSink(sqsConfig))
 
   /** A source that reads messages from sqs and retries if read was unsuccessful */
   def sqsSource(config: Sqs2KinesisConfig.SqsConfig)(implicit client: SqsAsyncClient): Source[Message, NotUsed] =
-    RestartSource.withBackoff(RestartSettings(500.millis, 1.second, 0.1)) { () =>
+    RestartSource.withBackoff(RestartSettings(config.minBackoff, config.maxBackoff, config.randomFactor)) { () =>
       SqsSource(
         config.queue,
-        SqsSourceSettings.Defaults.withMessageAttribute(MessageAttributeName(KinesisKey))
+        SqsSourceSettings.Defaults.withMessageAttribute(MessageAttributeName(config.kinesisKey))
       )
     }
 
   case class ParsedMsg(original: Message, key: String, bytes: Array[Byte])
 
   /** A flow that base64-decodes sqs messages. It ignores messages if they cannot be parsed */
-  val sqsMsg2kinesisMsg: Flow[Message, Either[ParsedMsg, ParsedMsg], NotUsed] =
+  def sqsMsg2kinesisMsg(config: Sqs2KinesisConfig.SqsConfig): Flow[Message, Either[ParsedMsg, ParsedMsg], NotUsed] =
     Flow[Message].map { msg =>
       logger.debug(s"Received message ${msg.messageId}")
       Either.catchNonFatal(java.util.Base64.getDecoder.decode(msg.body)) match {
         case Right(decoded) =>
-          val maybeKey = Option(msg.messageAttributes().get(KinesisKey)).map(_.stringValue())
+          val maybeKey = Option(msg.messageAttributes().get(config.kinesisKey)).map(_.stringValue())
           val key = maybeKey.getOrElse {
             val randomKey = UUID.randomUUID().toString
             logger.warn(s"Kinesis key for sqs message ${msg.messageId()} not found, random key generated: $randomKey")
@@ -140,7 +133,7 @@ object EventsStreamModule {
     PutRecordsRequestEntry.builder.partitionKey(msg.key).data(SdkBytes.fromByteArrayUnsafe(msg.bytes)).build
 
   /** A Flow that tries to send a batch of messages to kinesis. Any failures in the batch will be retried up to 5 times. */
-  def kinesisFlow(streamName: String, kinesisClient: KinesisAsyncClient)(
+  def kinesisFlow(config: Sqs2KinesisConfig.KinesisConfig, kinesisClient: KinesisAsyncClient)(
     implicit ec: ExecutionContext
   ): Flow[Vector[ParsedMsg], Message, NotUsed] = {
 
@@ -148,7 +141,11 @@ object EventsStreamModule {
     val inner = Flow[(Vector[ParsedMsg], Vector[ParsedMsg])].mapAsync(1) {
       case (todo, complete) =>
         val req =
-          PutRecordsRequest.builder.streamName(streamName).records(todo.map(toPutRecordReqEntry).asJavaCollection).build
+          PutRecordsRequest
+            .builder
+            .streamName(config.streamName)
+            .records(todo.map(toPutRecordReqEntry).asJavaCollection)
+            .build
         kinesisClient
           .putRecords(req)
           .asScala
@@ -166,12 +163,12 @@ object EventsStreamModule {
 
     Flow[Vector[ParsedMsg]]
       .map(_ -> Vector.empty)
-      .via(RetryFlow.withBackoff(500.milli, 1.second, 0.0, 5, inner) {
+      .via(RetryFlow.withBackoff(config.minBackoff, config.maxBackoff, config.randomFactor, config.maxRetries, inner) {
         case (_, (_, Vector())) =>
           None
         case (_, (successes, failures)) =>
           logger.error(
-            s"Got ${failures.size} failures and ${successes.size} successes writing to stream ${streamName}. Failures will be retried."
+            s"Got ${failures.size} failures and ${successes.size} successes writing to stream ${config.streamName}. Failures will be retried."
           )
           Some((failures, successes))
       })
@@ -179,9 +176,9 @@ object EventsStreamModule {
         case (successes, failures) =>
           if (failures.nonEmpty)
             logger.error(
-              s"Got ${failures.size} failures and ${successes.size} successes writing to stream ${streamName}. Giving up on failures because max retries exceeded. Failures will not be acked to sqs."
+              s"Got ${failures.size} failures and ${successes.size} successes writing to stream ${config.streamName}. Giving up on failures because max retries exceeded. Failures will not be acked to sqs."
             )
-          logger.debug(s"Successfully wrote ${successes.size} messages to kinesis stream ${streamName}")
+          logger.debug(s"Successfully wrote ${successes.size} messages to kinesis stream ${config.streamName}")
           successes.map(_.original)
       }
   }
@@ -197,7 +194,7 @@ object EventsStreamModule {
       }
 
     RetryFlow
-      .withBackoff(500.milli, 1.second, 0.0, 5, inner) {
+      .withBackoff(config.minBackoff, config.maxBackoff, config.randomFactor, config.maxRetries, inner) {
         case (in, Some(e)) =>
           logger.warn("Error acking sqs message. It will be retried", e)
           Some(in)
@@ -214,10 +211,4 @@ object EventsStreamModule {
       .groupedWithin(10000, 1.minute)
       .map(msg => s"sqs2kinesis processed ${msg.length} messages")
       .to(Sink.foreach(logger.info(_)))
-
-  // 5 MB - the maximum combined size of a PutRecordsRequest
-  val MaxKinesisBytesPerRequest = 5000000
-
-  // The maximum number of records in a PutRecordsRequest
-  val MaxKinesisBatch = 500
 }

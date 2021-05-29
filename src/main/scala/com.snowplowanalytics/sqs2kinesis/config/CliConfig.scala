@@ -69,6 +69,15 @@ object CliConfig {
       resolved <- Either
         .catchNonFatal(ConfigFactory.parseString(text).resolve)
         .leftMap(e => s"Could not parse config file $file: ${e.getMessage}")
-    } yield ConfigFactory.load(resolved.withFallback(ConfigFactory.load()))
+    } yield namespaced(ConfigFactory.load(namespaced(resolved.withFallback(namespaced(ConfigFactory.load())))))
+
+  /** Optionally give precedence to configs wrapped in a "snowplow" block. To help avoid polluting config namespace */
+  private def namespaced(config: Config): Config =
+    if (config.hasPath(Namespace))
+      config.getConfig(Namespace).withFallback(config.withoutPath(Namespace))
+    else
+      config
+
+  private val Namespace = "sqs2kinesis"
 
 }

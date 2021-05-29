@@ -14,20 +14,5 @@
     "bad": {
       "streamName": "test-stream-bad"
     }
-
   }
-
-  # Optional, for tracking runtime exceptions
-  "monitoring": {
-    "sentry": {
-      "dsn": "http://sentry.acme.com"
-    }
-  }
-
-  # Optional, any standard akka configurations to override the defaults.
-  # See https://doc.akka.io/docs/akka/current/general/configuration-reference.html
-  "akka": {
-    "loglevel": "INFO"
-  }
-
 }
