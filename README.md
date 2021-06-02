@@ -2,11 +2,16 @@
 
 ## Quickstart
 
-Assuming git and SBT installed:
+You can either edit the [sample configuration file](./config/config.hocon.sample) and mount it into the docker container:
 
 ```bash
-$ git clone https://github.com/snowplow-incubator/sqs2kinesis.git
-$ cd sqs2kinesis
+$ docker run --mount type=bind,source=./example/config.hocon.sample,destination=/config/config.hocon snowplow/sqs2kinesis:1.0.0 --config /config/config.hocon
+```
+
+Or alternatively pass each configuration option directly on the command line:
+
+```bash
+$ docker run snowplow/sqs2kinesis:1.0.0 -Doutput.good.streamName=goodstream -Doutput.bad.streamName=badstream -Dinput.sqs=https://sqs.eu-central-1.amazonaws.com/000000000000/test-topic
 ```
 
 ## Copyright and License
