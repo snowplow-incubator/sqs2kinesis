@@ -13,7 +13,7 @@
 package com.snowplowanalytics.sqs2kinesis
 
 import akka.NotUsed
-import akka.stream.scaladsl.Flow
+import akka.stream.scaladsl.{Flow, Source}
 import scala.concurrent.duration.FiniteDuration
 
 object Batcher {
@@ -34,6 +34,7 @@ object Batcher {
   ): Flow[T, Vector[T], NotUsed] =
     Flow[T]
       .map(m => Message(m, toWeight(m)))
+      .concat(Source(Seq(Flush)))
       .keepAlive(keepAlive, () => Flush)
       .via(scanFlush(State[T](Vector.empty, 0)) {
         case (State(acc, _), Flush) =>

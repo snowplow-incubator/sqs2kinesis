@@ -41,7 +41,6 @@ import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters._
 import scala.jdk.FutureConverters._
 import scala.util.control.NonFatal
-import scala.util.Random
 
 object EventsStreamModule {
 
@@ -111,21 +110,21 @@ object EventsStreamModule {
   def sqsMsg2kinesisMsg(config: Sqs2KinesisConfig.SqsConfig): Flow[Message, Either[ParsedMsg, ParsedMsg], NotUsed] =
     Flow[Message].map { msg =>
       logger.debug(s"Received message ${msg.messageId}")
+      val maybeKey = Option(msg.messageAttributes().get(config.kinesisKey)).map(_.stringValue())
+      val key = maybeKey.getOrElse {
+        val randomKey = UUID.randomUUID().toString
+        logger.warn(s"Kinesis key for sqs message ${msg.messageId()} not found, random key generated: $randomKey")
+        randomKey
+      }
       Either.catchNonFatal(java.util.Base64.getDecoder.decode(msg.body)) match {
         case Right(decoded) =>
-          val maybeKey = Option(msg.messageAttributes().get(config.kinesisKey)).map(_.stringValue())
-          val key = maybeKey.getOrElse {
-            val randomKey = UUID.randomUUID().toString
-            logger.warn(s"Kinesis key for sqs message ${msg.messageId()} not found, random key generated: $randomKey")
-            randomKey
-          }
           Right(ParsedMsg(msg, key, decoded))
         case Left(e) =>
           logger.error("Error decoding sqs message. Message will be sent to bad row stream.", e)
           val failure = Failure.GenericFailure(Instant.now(), NonEmptyList.one("Invalid base64 encoded SQS message"))
           val payload = Payload.RawPayload(msg.body)
           val badRow  = BadRow.GenericError(processor, failure, payload)
-          Left(ParsedMsg(msg, Random.nextInt.toString, badRow.compact.getBytes(UTF_8)))
+          Left(ParsedMsg(msg, key, badRow.compact.getBytes(UTF_8)))
       }
     }
 

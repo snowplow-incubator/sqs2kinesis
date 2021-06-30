@@ -21,8 +21,8 @@ import Sqs2KinesisConfig._
 
 class CliConfigSpec extends Specification {
   "parse" should {
-    "parse valid HOCON file with path provided" in {
-      val configPath = Paths.get(getClass.getResource("/config.hocon.sample").toURI)
+    "parse minimal HOCON file with path provided" in {
+      val configPath = Paths.get(getClass.getResource("/config.minimal.hocon").toURI)
       val expected = Sqs2KinesisConfig(
         SqsConfig(
           "https://sqs.eu-central-1.amazonaws.com/000000000000/test-topic",
@@ -31,6 +31,27 @@ class CliConfigSpec extends Specification {
           1.second,
           0.1,
           5
+        ),
+        Output(
+          KinesisConfig("test-stream-payloads", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5),
+          KinesisConfig("test-stream-bad", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5)
+        ),
+        Monitoring(None, Health("0.0.0.0", 8080))
+      )
+      CliConfig.parse(Seq("--config", configPath.toString)).map(_.app) must beRight(expected)
+    }
+
+    "parse reference HOCON file with path provided" in {
+      val configPath = Paths.get(getClass.getResource("/config.reference.hocon").toURI)
+      val expected = Sqs2KinesisConfig(
+        SqsConfig(
+          "https://sqs.eu-central-1.amazonaws.com/000000000000/test-topic",
+          "kinesisKey",
+          500.millis,
+          5.second,
+          0.1,
+          5,
+          1.minute
         ),
         Output(
           KinesisConfig("test-stream-payloads", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5),
