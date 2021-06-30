@@ -28,7 +28,7 @@ import scala.concurrent.duration.FiniteDuration
 case class Sqs2KinesisConfig(
   input: Sqs2KinesisConfig.SqsConfig,
   output: Sqs2KinesisConfig.Output,
-  monitoring: Option[Sqs2KinesisConfig.Monitoring]
+  monitoring: Sqs2KinesisConfig.Monitoring
 )
 
 object Sqs2KinesisConfig {
@@ -75,7 +75,8 @@ object Sqs2KinesisConfig {
 
   case class Output(good: KinesisConfig, bad: KinesisConfig)
   case class Sentry(dsn: String)
-  case class Monitoring(sentry: Option[Sentry])
+  case class Health(host: String, port: Int)
+  case class Monitoring(sentry: Option[Sentry], health: Health)
 
   implicit val finiteDurationEncoder: Encoder[FiniteDuration] =
     implicitly[Encoder[String]].contramap(_.toString)
@@ -88,6 +89,9 @@ object Sqs2KinesisConfig {
 
   implicit val outputDecoder: Decoder[Output] = deriveDecoder[Output]
   implicit val outputEncoder: Encoder[Output] = deriveEncoder[Output]
+
+  implicit val healthDecoder: Decoder[Health] = deriveDecoder[Health]
+  implicit val healthEncoder: Encoder[Health] = deriveEncoder[Health]
 
   implicit val sentryDecoder: Decoder[Sentry] = deriveDecoder[Sentry]
   implicit val sentryEncoder: Encoder[Sentry] = deriveEncoder[Sentry]
