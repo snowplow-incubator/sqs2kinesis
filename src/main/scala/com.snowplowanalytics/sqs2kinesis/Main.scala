@@ -25,15 +25,15 @@ object Main extends App with LazyLogging {
   CliConfig.parse(args.toIndexedSeq) match {
     case Right(CliConfig(sqs2KinesisConfig, rawConfig)) =>
       logger.info(sqs2KinesisConfig.asJson.noSpaces)
-      sqs2KinesisConfig.monitoring.flatMap(_.sentry).foreach(s => Sentry.init(s.dsn))
+      sqs2KinesisConfig.monitoring.sentry.foreach(s => Sentry.init(s.dsn))
 
       implicit val system: ActorSystem = ActorSystem("sqs2kinesis", rawConfig)
 
       EventsStreamModule.runStream(sqs2KinesisConfig)
-      HttpModule.runHttpServer("0.0.0.0", 8080) // HTTP server for health check
+      HttpModule.runHttpServer(sqs2KinesisConfig.monitoring.health.host, sqs2KinesisConfig.monitoring.health.port) // HTTP server for health check
 
     case Left(error) =>
-      println(error)
+      logger.error(error)
       sys.exit(1)
   }
 

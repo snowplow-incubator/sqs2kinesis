@@ -36,7 +36,7 @@ class CliConfigSpec extends Specification {
           KinesisConfig("test-stream-payloads", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5),
           KinesisConfig("test-stream-bad", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5)
         ),
-        Some(Monitoring(Some(Sentry("http://sentry.acme.com"))))
+        Monitoring(Some(Sentry("http://sentry.acme.com")), Health("0.0.0.0", 8080))
       )
       CliConfig.parse(Seq("--config", configPath.toString)).map(_.app) must beRight(expected)
     }
