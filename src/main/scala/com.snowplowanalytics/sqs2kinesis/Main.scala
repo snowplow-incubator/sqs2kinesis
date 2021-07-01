@@ -29,7 +29,8 @@ object Main extends App with LazyLogging {
 
       implicit val system: ActorSystem = ActorSystem("sqs2kinesis", rawConfig)
 
-      EventsStreamModule.runStream(sqs2KinesisConfig)
+      EventsStreamModule.runStream(sqs2KinesisConfig).onComplete(_ => system.terminate)(system.dispatcher)
+
       HttpModule.runHttpServer(sqs2KinesisConfig.monitoring.health.host, sqs2KinesisConfig.monitoring.health.port) // HTTP server for health check
 
     case Left(error) =>

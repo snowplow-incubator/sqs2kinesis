@@ -40,7 +40,8 @@ object Sqs2KinesisConfig {
     *  @param minBackoff Minimum backoff before retrying after failure
     *  @param maxBackoff Maximum backoff before retrying after failure
     *  @param randomFactor Random factor when calculating backoff time after failure
-    *  @param maxRetries Maximum number of retries after failure to ack (delete) a message
+    *  @param maxRetries Maximum number of retries after failure to fetch or ack (delete) a message
+    *  @param maxRetriesWithin Duration for which the maxRetries are counted, before exiting with failure
     */
   case class SqsConfig(
     queue: String,
@@ -48,7 +49,8 @@ object Sqs2KinesisConfig {
     minBackoff: FiniteDuration,
     maxBackoff: FiniteDuration,
     randomFactor: Double,
-    maxRetries: Int
+    maxRetries: Int,
+    maxRetriesWithin: FiniteDuration
   )
 
   /** Configure the output kinesis stream
