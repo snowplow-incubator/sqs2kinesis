@@ -13,7 +13,7 @@
 
 package com.snowplowanalytics.sqs2kinesis
 
-import akka.NotUsed
+import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import akka.stream.scaladsl._
 import akka.stream.alpakka.sqs.scaladsl.{SqsAckFlow, SqsSource}
@@ -37,7 +37,7 @@ import java.time.Instant
 import java.nio.charset.StandardCharsets.UTF_8
 
 import scala.concurrent.duration.DurationLong
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 import scala.jdk.FutureConverters._
 import scala.util.control.NonFatal
@@ -48,7 +48,7 @@ object EventsStreamModule {
 
   val processor: Processor = Processor(generated.BuildInfo.name, generated.BuildInfo.version)
 
-  def runStream(config: Sqs2KinesisConfig)(implicit system: ActorSystem) = {
+  def runStream(config: Sqs2KinesisConfig)(implicit system: ActorSystem): Future[Done] = {
 
     val httpClient = AkkaHttpClient.builder().withActorSystem(system).build()
 
@@ -73,7 +73,7 @@ object EventsStreamModule {
       .via(sqsMsg2kinesisMsg(config.input))
       .alsoTo(Flow[Either[ParsedMsg, ParsedMsg]].mapConcat(_.toSeq).to(goodSink))
       .alsoTo(Flow[Either[ParsedMsg, ParsedMsg]].mapConcat(_.left.toSeq).to(badSink))
-      .to(printProgress)
+      .alsoTo(printProgress)
       .run()
   }
 
@@ -97,7 +97,10 @@ object EventsStreamModule {
 
   /** A source that reads messages from sqs and retries if read was unsuccessful */
   def sqsSource(config: Sqs2KinesisConfig.SqsConfig)(implicit client: SqsAsyncClient): Source[Message, NotUsed] =
-    RestartSource.withBackoff(RestartSettings(config.minBackoff, config.maxBackoff, config.randomFactor)) { () =>
+    RestartSource.withBackoff(
+      RestartSettings(config.minBackoff, config.maxBackoff, config.randomFactor)
+        .withMaxRestarts(config.maxRetries, config.maxRetriesWithin)
+    ) { () =>
       SqsSource(
         config.queue,
         SqsSourceSettings.Defaults.withMessageAttribute(MessageAttributeName(config.kinesisKey))
