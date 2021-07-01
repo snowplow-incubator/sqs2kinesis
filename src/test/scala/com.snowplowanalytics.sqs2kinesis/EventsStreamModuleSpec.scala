@@ -74,7 +74,7 @@ object EventsStreamModuleSpec {
   val messageId: String  = "b73f2c49-874e-47c4-9a76-09751e3dc3e2"
 
   val config: Sqs2KinesisConfig.SqsConfig =
-    Sqs2KinesisConfig.SqsConfig("myqueue", "kinesisKey", 1.second, 1.second, 1.0, 1)
+    Sqs2KinesisConfig.SqsConfig("myqueue", "kinesisKey", 1.second, 1.second, 1.0, 1, 1.minute)
 
   def buildMessage(body: String): Message = {
     val keyAttribute = MessageAttributeValue.builder.dataType("String").stringValue(kinesisKey).build
