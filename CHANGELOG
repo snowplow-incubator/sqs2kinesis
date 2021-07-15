@@ -1,3 +1,22 @@
+Version 1.0.0 (2021-07-16)
+--------------------------
+Change docker base image to adoptopenjdk:11-jre-hotspot-focal (#30)
+The app should exit upon unhandled exception (#28)
+Add unit tests for the batching and parsing (#29)
+Health check port and host are configurable (#27)
+Add badges to README (#14)
+Add run details to README (#6)
+Move configuration parameters to application.conf (#25)
+Config file to be consistent across snowplow apps (#24)
+Provide configuration file with cli argument (#5)
+Bump aws sdk to version 2 (#23)
+Bump alpakka to 3.0.2 (#22)
+Remove jackson cbor dependency (#21)
+Add scalafmt to ci (#20)
+Send invalid base64 strings to bad kinesis stream (#19)
+Attach jar files to github releases (#17)
+Fix exceeding kinesis maximum batch size (#18)
+
 Version 0.2.0 (2021-01-06)
 --------------------------
 Extend copyright to 2021 (#13)
