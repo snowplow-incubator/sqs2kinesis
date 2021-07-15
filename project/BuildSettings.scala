@@ -29,15 +29,15 @@ object BuildSettings {
 
   lazy val dockerSettings =
     Seq(
-      dockerUsername := Some("snowplow"),
       packageName in Docker := "sqs2kinesis",
-      dockerExposedPorts ++= Seq(8080),
-      dockerUpdateLatest := true,
-      dockerBaseImage := "snowplow/base-debian:0.2.2",
       maintainer in Docker := "Snowplow Analytics Ltd. <support@snowplowanalytics.com>",
-      daemonUser in Docker := "snowplow",
+      dockerBaseImage := "adoptopenjdk:11-jre-hotspot-focal",
+      daemonUser in Docker := "daemon",
+      dockerUpdateLatest := true,
+      dockerRepository := Some("snowplow"),
       daemonUserUid in Docker := None,
-      defaultLinuxInstallLocation in Docker := "/home/snowplow"
+      defaultLinuxInstallLocation in Docker := "/opt/snowplow",
+      dockerExposedPorts ++= Seq(8080),
     )
 
   lazy val compilerSettings = Seq[Setting[_]](
