@@ -34,7 +34,7 @@ object BuildSettings {
       dockerBaseImage := "adoptopenjdk:11-jre-hotspot-focal",
       daemonUser in Docker := "daemon",
       dockerUpdateLatest := true,
-      dockerRepository := Some("snowplow"),
+      dockerUsername := Some("snowplow"),
       daemonUserUid in Docker := None,
       defaultLinuxInstallLocation in Docker := "/opt/snowplow",
       dockerExposedPorts ++= Seq(8080),
