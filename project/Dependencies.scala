@@ -18,7 +18,7 @@ object Dependencies {
     val awsSdk       = "2.17.43"
     val alpakka      = "3.0.3"
     val akka         = "2.6.16"
-    val scalaLogging = "3.9.2"
+    val scalaLogging = "3.9.4"
     val logback      = "1.2.3"
     val specs2       = "4.7.0"
     val sentry       = "1.7.30"
