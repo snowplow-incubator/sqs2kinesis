@@ -15,7 +15,7 @@ import sbt._
 object Dependencies {
 
   object V {
-    val awsSdk       = "2.16.102"
+    val awsSdk       = "2.17.43"
     val alpakka      = "3.0.2"
     val akka         = "2.6.14"
     val scalaLogging = "3.9.2"
