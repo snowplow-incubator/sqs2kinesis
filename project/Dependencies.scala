@@ -22,7 +22,7 @@ object Dependencies {
     val logback      = "1.2.3"
     val specs2       = "4.7.0"
     val sentry       = "1.7.30"
-    val badRows      = "2.1.0"
+    val badRows      = "2.1.1"
     val decline      = "1.4.0"
     val circeConfig  = "0.8.0"
   }
