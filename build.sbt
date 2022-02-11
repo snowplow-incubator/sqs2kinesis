@@ -25,6 +25,7 @@ lazy val root = project
     libraryDependencies ++= Seq(
       Dependencies.awsKinesisSdk,
       Dependencies.akkaStream,
+      Dependencies.akkaHttp,
       Dependencies.alpakkaSqs,
       Dependencies.scalaLogging,
       Dependencies.sentry,
