@@ -14,13 +14,13 @@ sqs2kinesis can be used as an optional enhancement to a Snowplow pipeline, for w
 You can either edit the [sample configuration file](./config/config.minimal.hocon) and mount it into the docker container:
 
 ```bash
-$ docker run --mount type=bind,source=$(pwd)/config/config.hocon.sample,destination=/config/config.hocon snowplow/sqs2kinesis:1.0.1 --config /config/config.hocon
+$ docker run --mount type=bind,source=$(pwd)/config/config.hocon.sample,destination=/config/config.hocon snowplow/sqs2kinesis:1.0.2 --config /config/config.hocon
 ```
 
 Or alternatively pass each configuration option directly on the command line:
 
 ```bash
-$ docker run snowplow/sqs2kinesis:1.0.1 -Doutput.good.streamName=goodstream -Doutput.bad.streamName=badstream -Dinput.queue=https://sqs.eu-central-1.amazonaws.com/000000000000/test-topic
+$ docker run snowplow/sqs2kinesis:1.0.2 -Doutput.good.streamName=goodstream -Doutput.bad.streamName=badstream -Dinput.queue=https://sqs.eu-central-1.amazonaws.com/000000000000/test-topic
 ```
 
 ## Find out more
@@ -59,7 +59,7 @@ limitations under the License.
 [license]: http://www.apache.org/licenses/LICENSE-2.0
 [license-image]: http://img.shields.io/badge/license-Apache--2-blue.svg?style=flat
 
-[release-image]: http://img.shields.io/badge/release_1.0.1-blue.svg?style=flat
+[release-image]: http://img.shields.io/badge/release_1.0.2-blue.svg?style=flat
 [releases]: https://github.com/snowplow-incubator/sqs2kinesis/releases
 
 [snowplow-collector]: https://github.com/snowplow/stream-collector/

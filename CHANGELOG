@@ -1,3 +1,13 @@
+Version 1.0.2 (2022-02-14)
+--------------------------
+Missing documentation on config.hocon (#43)
+Change docker base image to eclipse-temurin:11-jre-focal (#49)
+Bump akka-http to 10.2.7 (#48)
+Update license header to 2022 (#47)
+Bump akka-stream to 2.6.18 (#46)
+Bump alpakka-sqs to 3.0.4 (#45)
+Bump kinesis client to 2.17.128 (#44)
+
 Version 1.0.1 (2021-09-24)
 --------------------------
 Github action to scan docker image with lacework (#40)
