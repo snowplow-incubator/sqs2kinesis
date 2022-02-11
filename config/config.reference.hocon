@@ -1,3 +1,5 @@
+# Refer to https://github.com/lightbend/config#using-hocon-the-json-superset for valid hocon file syntax
+
 {
   "input": {
     "queue": "https://sqs.eu-central-1.amazonaws.com/000000000000/test-topic"
