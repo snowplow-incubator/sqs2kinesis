@@ -31,7 +31,7 @@ object BuildSettings {
     Seq(
       packageName in Docker := "sqs2kinesis",
       maintainer in Docker := "Snowplow Analytics Ltd. <support@snowplowanalytics.com>",
-      dockerBaseImage := "adoptopenjdk:11-jre-hotspot-focal",
+      dockerBaseImage := "eclipse-temurin:11-jre-focal",
       daemonUser in Docker := "daemon",
       dockerUpdateLatest := true,
       dockerUsername := Some("snowplow"),
