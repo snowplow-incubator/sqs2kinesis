@@ -34,8 +34,8 @@ class CliConfigSpec extends Specification {
           1.minute
         ),
         Output(
-          KinesisConfig("test-stream-payloads", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5),
-          KinesisConfig("test-stream-bad", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5)
+          KinesisConfig("test-stream-payloads", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5, None),
+          KinesisConfig("test-stream-bad", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5, None)
         ),
         Monitoring(None, Health("0.0.0.0", 8080))
       )
@@ -55,8 +55,8 @@ class CliConfigSpec extends Specification {
           1.minute
         ),
         Output(
-          KinesisConfig("test-stream-payloads", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5),
-          KinesisConfig("test-stream-bad", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5)
+          KinesisConfig("test-stream-payloads", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5, None),
+          KinesisConfig("test-stream-bad", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5, None)
         ),
         Monitoring(Some(Sentry("http://sentry.acme.com")), Health("0.0.0.0", 8080))
       )

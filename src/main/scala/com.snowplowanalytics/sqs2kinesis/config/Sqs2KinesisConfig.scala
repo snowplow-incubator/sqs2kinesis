@@ -63,6 +63,7 @@ object Sqs2KinesisConfig {
     *  @param maxBackoff Maximum backoff before retrying after failure
     *  @param randomFactor Random factor when calculating backoff time after failure
     *  @param maxRetries Maximum number of retries after failure
+    *  @param delayAfterWrite An optional delay used to wait after writing records to kinesis
     */
   case class KinesisConfig(
     streamName: String,
@@ -72,7 +73,8 @@ object Sqs2KinesisConfig {
     minBackoff: FiniteDuration,
     maxBackoff: FiniteDuration,
     randomFactor: Double,
-    maxRetries: Int
+    maxRetries: Int,
+    delayAfterWrite: Option[FiniteDuration]
   )
 
   case class Output(good: KinesisConfig, bad: KinesisConfig)

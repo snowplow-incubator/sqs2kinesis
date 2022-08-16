@@ -19,6 +19,7 @@ import akka.stream.scaladsl._
 import akka.stream.alpakka.sqs.scaladsl.{SqsAckFlow, SqsSource}
 import akka.stream.alpakka.sqs.{MessageAction, MessageAttributeName, SqsSourceSettings}
 import akka.stream.RestartSettings
+import akka.stream.contrib.DelayFlow
 import cats.data.NonEmptyList
 import cats.syntax.either._
 import com.github.matsluni.akkahttpspi.AkkaHttpClient
@@ -28,14 +29,12 @@ import software.amazon.awssdk.services.kinesis.KinesisAsyncClient
 import software.amazon.awssdk.services.kinesis.model.{PutRecordsRequest, PutRecordsRequestEntry}
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.Message
-
 import com.snowplowanalytics.snowplow.badrows.{BadRow, Failure, Payload, Processor}
 import com.snowplowanalytics.sqs2kinesis.config.Sqs2KinesisConfig
 
 import java.util.UUID
 import java.time.Instant
 import java.nio.charset.StandardCharsets.UTF_8
-
 import scala.concurrent.duration.DurationLong
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
@@ -92,6 +91,7 @@ object EventsStreamModule {
           m.bytes.size + m.key.getBytes.size
         }
       )
+      .via(DelayFlow(kinesisConfig.delayAfterWrite.getOrElse(0.seconds)))
       .via(kinesisFlow(kinesisConfig, kinesisClient))
       .to(confirmSqsSink(sqsConfig))
 
@@ -181,6 +181,11 @@ object EventsStreamModule {
               s"Got ${failures.size} failures and ${successes.size} successes writing to stream ${config.streamName}. Giving up on failures because max retries exceeded. Failures will not be acked to sqs."
             )
           logger.debug(s"Successfully wrote ${successes.size} messages to kinesis stream ${config.streamName}")
+
+          config.delayAfterWrite.foreach { delay =>
+            logger.info(s"We must wait $delay before sending data to kinesis again")
+          }
+
           successes.map(_.original)
       }
   }

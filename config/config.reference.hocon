@@ -33,6 +33,8 @@
       maxBackoff: 1 second
       randomFactor: 0.1
       maxRetries: 5
+      # The time to wait after pushing data to kinesis
+      delayAfterWrite: 1 minute
     }
 
     # Configure output kinesis stream for invalid messages
@@ -51,6 +53,8 @@
       maxBackoff: 1 second
       randomFactor: 0.1
       maxRetries: 5
+      # The time to wait after pushing data to kinesis
+      delayAfterWrite: 30 seconds
     }
 
   }
