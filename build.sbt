@@ -24,6 +24,7 @@ lazy val root = project
   .settings(
     libraryDependencies ++= Seq(
       Dependencies.awsKinesisSdk,
+      Dependencies.awsSts,
       Dependencies.akkaStream,
       Dependencies.akkaHttp,
       Dependencies.alpakkaSqs,
