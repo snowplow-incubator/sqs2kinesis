@@ -91,6 +91,7 @@ object EventsStreamModule {
           m.bytes.size + m.key.getBytes.size
         }
       )
+      .async // we need an async boundary before sleeping so that the producer isn't slowed down (preventing it from making batches)
       .via(DelayFlow(kinesisConfig.delayAfterWrite.getOrElse(0.seconds)))
       .via(kinesisFlow(kinesisConfig, kinesisClient))
       .to(confirmSqsSink(sqsConfig))
@@ -183,7 +184,7 @@ object EventsStreamModule {
           logger.debug(s"Successfully wrote ${successes.size} messages to kinesis stream ${config.streamName}")
 
           config.delayAfterWrite.foreach { delay =>
-            logger.info(s"We must wait $delay before sending data to kinesis again")
+            logger.debug(s"We must wait $delay before sending data to kinesis again")
           }
 
           successes.map(_.original)
