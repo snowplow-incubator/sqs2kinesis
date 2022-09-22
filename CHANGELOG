@@ -1,3 +1,8 @@
+Version 1.0.3 (2022-09-23)
+--------------------------
+Bump jackson-databind to 2.12.7 (#55)
+Add possibility to use STS to authenticate (#54)
+
 Version 1.0.2 (2022-02-14)
 --------------------------
 Missing documentation on config.hocon (#43)
