@@ -34,6 +34,7 @@ lazy val root = project
       Dependencies.circeConfig,
       Dependencies.badRows,
       Dependencies.logback,
+      Dependencies.jackson,
       Dependencies.specs2
     )
   )

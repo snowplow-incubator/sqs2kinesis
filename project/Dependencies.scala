@@ -27,6 +27,7 @@ object Dependencies {
     val badRows      = "2.1.1"
     val decline      = "1.4.0"
     val circeConfig  = "0.8.0"
+    val jackson      = "2.12.7" // Override default to mitigate CVE
   }
 
   val awsKinesisSdk  = "software.amazon.awssdk"           % "kinesis"                      % V.awsSdk
@@ -40,5 +41,6 @@ object Dependencies {
   val circeConfig    = "io.circe"                         %% "circe-config"                % V.circeConfig
   val sentry         = "io.sentry"                        % "sentry-logback"               % V.sentry
   val logback        = "ch.qos.logback"                   % "logback-classic"              % V.logback % Runtime
+  val jackson        = "com.fasterxml.jackson.core"       % "jackson-databind"             % V.jackson
   val specs2         = "org.specs2"                       %% "specs2-core"                 % V.specs2 % Test
 }
