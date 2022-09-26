@@ -24,7 +24,7 @@ object BuildSettings {
   lazy val projectSettings = Seq(
     name := "sqs2kinesis",
     organization := "com.snowplowanalytics",
-    scalaVersion := "2.13.1"
+    scalaVersion := "2.13.9"
   )
 
   lazy val dockerSettings =
