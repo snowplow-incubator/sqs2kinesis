@@ -27,7 +27,7 @@ object Dependencies {
     val badRows      = "2.1.1"
     val decline      = "1.4.0"
     val circeConfig  = "0.8.0"
-    val jackson      = "2.12.7" // Override default to mitigate CVE
+    val jackson      = "2.13.4.2" // Override default to mitigate CVE
   }
 
   val awsKinesisSdk  = "software.amazon.awssdk"           % "kinesis"                      % V.awsSdk
