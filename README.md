@@ -45,7 +45,7 @@ limitations under the License.
 [license]: http://www.apache.org/licenses/LICENSE-2.0
 [license-image]: http://img.shields.io/badge/license-Apache--2-blue.svg?style=flat
 
-[release-image]: http://img.shields.io/badge/release_1.0.5-blue.svg?style=flat
+[release-image]: http://img.shields.io/badge/release_1.0.6-blue.svg?style=flat
 [releases]: https://github.com/snowplow-incubator/sqs2kinesis/releases
 
 [snowplow-collector]: https://github.com/snowplow/stream-collector/
