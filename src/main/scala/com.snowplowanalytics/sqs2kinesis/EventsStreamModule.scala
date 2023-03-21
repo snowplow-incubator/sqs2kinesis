@@ -69,7 +69,13 @@ object EventsStreamModule {
     val goodSink = sink(config.output.good, config.input, kinesisClient)
     val badSink  = sink(config.output.bad, config.input, kinesisClient)
 
-    sqsSource(config.input)
+    val source = config
+      .input
+      .throttle
+      .map(t => sqsSource(config.input).throttle(t.elements, t.per))
+      .getOrElse(sqsSource(config.input))
+
+    source
       .via(sqsMsg2kinesisMsg(config.input))
       .alsoTo(Flow[Either[ParsedMsg, ParsedMsg]].mapConcat(_.toSeq).to(goodSink))
       .alsoTo(Flow[Either[ParsedMsg, ParsedMsg]].mapConcat(_.left.toSeq).to(badSink))

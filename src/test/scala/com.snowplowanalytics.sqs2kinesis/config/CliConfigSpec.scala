@@ -31,7 +31,8 @@ class CliConfigSpec extends Specification {
           5.second,
           0.1,
           5,
-          1.minute
+          1.minute,
+          None
         ),
         Output(
           KinesisConfig("test-stream-payloads", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5),
@@ -52,7 +53,8 @@ class CliConfigSpec extends Specification {
           5.second,
           0.1,
           5,
-          1.minute
+          1.minute,
+          Some(ThrottleConfig(10, 2.seconds))
         ),
         Output(
           KinesisConfig("test-stream-payloads", 5000000, 500, 1.second, 500.millis, 1.second, 0.1, 5),

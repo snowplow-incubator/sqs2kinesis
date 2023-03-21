@@ -13,6 +13,12 @@
     randomFactor: 0.1
     maxRetries: 5
     maxRetriesWithin: 1 minute
+
+    # Optional, allows throttling sqs
+    throttle {
+      elements = 10
+      per = 2 seconds
+    }
   }
 
   "output": {

@@ -50,7 +50,13 @@ object Sqs2KinesisConfig {
     maxBackoff: FiniteDuration,
     randomFactor: Double,
     maxRetries: Int,
-    maxRetriesWithin: FiniteDuration
+    maxRetriesWithin: FiniteDuration,
+    throttle: Option[ThrottleConfig]
+  )
+
+  case class ThrottleConfig(
+    elements: Int,
+    per: FiniteDuration
   )
 
   /** Configure the output kinesis stream
@@ -82,6 +88,9 @@ object Sqs2KinesisConfig {
 
   implicit val finiteDurationEncoder: Encoder[FiniteDuration] =
     implicitly[Encoder[String]].contramap(_.toString)
+
+  implicit val throttleDecoder: Decoder[ThrottleConfig] = deriveDecoder[ThrottleConfig]
+  implicit val throttleEncoder: Encoder[ThrottleConfig] = deriveEncoder[ThrottleConfig]
 
   implicit val sqsDecoder: Decoder[SqsConfig] = deriveDecoder[SqsConfig]
   implicit val sqsEncoder: Encoder[SqsConfig] = deriveEncoder[SqsConfig]
